@@ -1,8 +1,9 @@
 import { createClient } from '@/utils/supabase/server'
 import { CreateProjectModal } from './CreateProjectModal'
-import { Folder, Globe, ArrowRight } from 'lucide-react'
+import { Folder, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { Project } from '@/types/database'
+import { ProjectCard } from '@/app/dashboard/ProjectCard'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -39,30 +40,7 @@ export default async function DashboardPage() {
                     {projects && projects.length > 0 ? (
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {(projects as Project[]).map((project) => (
-                                <div
-                                    key={project.id}
-                                    className="relative flex flex-col overflow-hidden rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-900/5 hover:ring-gray-900/10 transition-all"
-                                >
-                                    <div className="flex items-center gap-x-3">
-                                        <div className="rounded-md bg-indigo-50 p-2">
-                                            <Folder className="h-6 w-6 text-indigo-600" />
-                                        </div>
-                                        <h3 className="text-lg font-semibold leading-7 text-gray-900">
-                                            {project.name}
-                                        </h3>
-                                    </div>
-                                    <div className="mt-4 flex flex-1 flex-col justify-between">
-                                        <div className="mt-6 flex items-center justify-end">
-                                            <Link
-                                                href={`/dashboard/${project.id}`}
-                                                className="text-sm font-semibold leading-6 text-indigo-600 hover:text-indigo-500 flex items-center gap-1 group"
-                                            >
-                                                Voir les pages
-                                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
+                                <ProjectCard key={project.id} project={project} />
                             ))}
                         </div>
                     ) : (
