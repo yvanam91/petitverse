@@ -1,0 +1,44 @@
+import { Sidebar } from '@/components/dashboard/Sidebar'
+import { getProjects, getProjectBySlug } from '@/app/dashboard/actions'
+import { notFound, redirect } from 'next/navigation'
+
+export default async function DashboardLayout({
+    children,
+    params,
+}: {
+    children: React.ReactNode
+    params: Promise<{ projectSlug: string }>
+}) {
+    const { projectSlug } = await params
+
+    const [projects, currentProject] = await Promise.all([
+        getProjects(),
+        getProjectBySlug(projectSlug)
+    ])
+
+    if (!currentProject) {
+        // If project doesn't exist, maybe redirect to dashboard root or 404
+        // check if user has any project
+        if (projects.length > 0) {
+            redirect(`/dashboard/${projects[0].slug}/pages`)
+        } else {
+            redirect('/dashboard') // Back to empty state
+        }
+    }
+
+    // Security check: getProjects already filters by user_id via supabase RLS/query
+    // getProjectBySlug also filters by user_id
+
+    return (
+        <div className="flex h-screen bg-gray-50">
+            <Sidebar
+                projectSlug={projectSlug}
+                projects={projects as any[]}
+                currentProject={currentProject as any}
+            />
+            <main className="flex-1 overflow-y-auto">
+                {children}
+            </main>
+        </div>
+    )
+}

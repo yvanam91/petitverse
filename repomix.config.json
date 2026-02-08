@@ -1,0 +1,16 @@
+{
+    "output": {
+        "filePath": "petitverse-context.txt",
+        "style": "markdown"
+    },
+    "ignore": {
+        "customPatterns": [
+            ".next/*",
+            "node_modules/*",
+            ".git/*",
+            "public/uploads/*",
+            "*.log",
+            "package-lock.json"
+        ]
+    }
+}

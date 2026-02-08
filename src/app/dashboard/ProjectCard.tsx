@@ -65,7 +65,7 @@ export function ProjectCard({ project }: { project: Project }) {
             <div className="mt-4 flex flex-1 flex-col justify-between">
                 <div className="mt-6 flex items-center justify-end">
                     <Link
-                        href={`/dashboard/${project.id}`}
+                        href={`/dashboard/${project.slug}/pages`}
                         className="text-sm font-semibold leading-6 text-indigo-600 hover:text-indigo-500 flex items-center gap-1 group"
                     >
                         Voir les pages

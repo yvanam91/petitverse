@@ -2,30 +2,25 @@ import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import type { Page } from '@/types/database'
 import { ProjectView } from '@/components/dashboard/ProjectView'
+import { getProjectBySlug } from '@/app/dashboard/actions'
 
-export default async function ProjectPage({
+export default async function PagesPage({
     params,
 }: {
-    params: Promise<{ projectId: string }>
+    params: Promise<{ projectSlug: string }>
 }) {
-    const { projectId } = await params
-    const supabase = await createClient()
-
-    // Fetch project to ensure it exists and belongs to user
-    const { data: project } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single()
+    const { projectSlug } = await params
+    const project = await getProjectBySlug(projectSlug)
 
     if (!project) {
         notFound()
     }
 
+    const supabase = await createClient()
     const { data: pages } = await supabase
         .from('pages')
         .select('*')
-        .eq('project_id', projectId)
+        .eq('project_id', project.id)
         .order('id', { ascending: false })
 
     return <ProjectView project={project} initialPages={(pages as Page[]) || []} />

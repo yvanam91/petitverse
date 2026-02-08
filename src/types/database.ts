@@ -16,18 +16,40 @@ export interface Block {
 }
 
 export interface PageConfig {
-    // Theme
+    // Legacy support (to be deprecated)
     backgroundColor?: string
-    secondaryColor?: string // New
-    textColor?: string // New
-    linkColor?: string // New
-    headerBackgroundImage?: string // New
-
     buttonColor?: string
     buttonTextColor?: string
     buttonStyle?: 'rounded-none' | 'rounded-md' | 'rounded-full'
     buttonVariant?: 'fill' | 'outline' | 'soft-shadow'
     fontFamily?: string
+    secondaryColor?: string
+    textColor?: string
+    linkColor?: string
+    headerBackgroundImage?: string
+
+    // Phase 1 New Structure
+    colors?: {
+        background: string
+        primary: string
+        secondary: string
+        text: string
+        link: string
+        buttonText: string
+    }
+    typography?: {
+        fontFamily: string
+    }
+    borders?: {
+        radius: string // e.g., '8px', '9999px'
+        width: string // e.g., '1px', '2px'
+        style: 'solid' | 'dashed' | 'dotted' | 'none'
+    }
+    dividers?: {
+        style: 'solid' | 'dashed' | 'dotted' | 'zigzag' | 'wave'
+        width: string
+        color: string
+    }
     [key: string]: any
 }
 
@@ -36,6 +58,7 @@ export interface Theme {
     name: string
     config: PageConfig
     user_id: string
+    project_id: string
     created_at: string
 }
 
@@ -45,7 +68,11 @@ export type Page = {
     project_id: string
     title: string
     slug: string
+    description?: string
+    is_published?: boolean
+    meta_title?: string
     config?: PageConfig
+    theme?: Theme
     blocks?: Block[]
 }
 
@@ -54,4 +81,6 @@ export type Project = {
     created_at: string
     user_id: string
     name: string
+    slug: string
+    default_theme_id?: string
 }

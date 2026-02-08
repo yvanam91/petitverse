@@ -7,19 +7,22 @@ import { slugify } from '@/utils/slugify'
 import { useRouter } from 'next/navigation'
 import type { Page } from '@/types/database'
 
+import { toast } from 'sonner'
+
 interface CreatePageModalProps {
     projectId: string
     onSuccess?: (page: Page) => void
+    children?: React.ReactNode
 }
 
-export function CreatePageModal({ projectId, onSuccess }: CreatePageModalProps) {
+export function CreatePageModal({ projectId, onSuccess, children }: CreatePageModalProps) {
     const router = useRouter()
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-
     const [title, setTitle] = useState('')
     const [slug, setSlug] = useState('')
+    const [description, setDescription] = useState('')
     const [isSlugEdited, setIsSlugEdited] = useState(false)
 
     useEffect(() => {
@@ -36,12 +39,14 @@ export function CreatePageModal({ projectId, onSuccess }: CreatePageModalProps) 
 
             if (result?.error) {
                 setError(result.error)
+                toast.error(result.error)
                 return
             }
 
             setIsOpen(false)
             setTitle('')
             setSlug('')
+            setDescription('')
             setIsSlugEdited(false)
 
             if (onSuccess && result?.data) {
@@ -51,7 +56,9 @@ export function CreatePageModal({ projectId, onSuccess }: CreatePageModalProps) 
                 router.refresh()
             }
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Une erreur est survenue')
+            const msg = e instanceof Error ? e.message : 'Une erreur est survenue'
+            setError(msg)
+            toast.error(msg)
         } finally {
             setLoading(false)
         }
@@ -59,13 +66,19 @@ export function CreatePageModal({ projectId, onSuccess }: CreatePageModalProps) 
 
     return (
         <>
-            <button
-                onClick={() => setIsOpen(true)}
-                className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
-            >
-                <Plus className="h-4 w-4" />
-                Ajouter une page
-            </button>
+            {children ? (
+                <div onClick={() => setIsOpen(true)} className="cursor-pointer">
+                    {children}
+                </div>
+            ) : (
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    Ajouter une page
+                </button>
+            )}
 
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -95,6 +108,7 @@ export function CreatePageModal({ projectId, onSuccess }: CreatePageModalProps) 
                                     name="title"
                                     id="title"
                                     required
+                                    maxLength={50}
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     placeholder="Ma Super Page"
@@ -118,6 +132,7 @@ export function CreatePageModal({ projectId, onSuccess }: CreatePageModalProps) 
                                         name="slug"
                                         id="slug"
                                         required
+                                        maxLength={50}
                                         value={slug}
                                         onChange={(e) => {
                                             setSlug(e.target.value)
@@ -130,6 +145,30 @@ export function CreatePageModal({ projectId, onSuccess }: CreatePageModalProps) 
                                 <p className="mt-1 text-xs text-gray-500">
                                     Utilisé dans l'URL. Minuscules, chiffres et tirets uniquement.
                                 </p>
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="description"
+                                    className="block text-sm font-medium text-gray-700"
+                                >
+                                    Description
+                                </label>
+                                <textarea
+                                    name="description"
+                                    id="description"
+                                    rows={3}
+                                    maxLength={200}
+                                    placeholder="Une brève description de votre page..."
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 text-black placeholder:text-gray-400 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none sm:text-sm border p-2"
+                                />
+                                <div className="mt-1 text-right">
+                                    <span className={`text-xs ${description.length >= 180 ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
+                                        {description.length}/200
+                                    </span>
+                                </div>
                             </div>
 
                             {error && (

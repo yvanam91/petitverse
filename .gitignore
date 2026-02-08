@@ -45,3 +45,6 @@ yarn-error.log*
 .env.production.local
 node_modules/
 .next/
+
+#others
+petitverse-context.txt

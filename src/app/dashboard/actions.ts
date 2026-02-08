@@ -60,26 +60,75 @@ export async function createProject(formData: FormData) {
     // Ensure slug is unique if needed, but for now simple generation
     // Ideally we should check existence or let DB handle unique constraint error
 
-    const { error } = await supabase.from('projects').insert({
+    const { data, error } = await supabase.from('projects').insert({
         name,
         slug,
         user_id: user.id,
-    })
+    }).select().single()
 
     if (error) {
         throw new Error(error.message)
     }
 
     revalidatePath('/dashboard')
+
+    // 3. Create Default Theme automatically
+    const defaultThemeConfig = {
+        colors: {
+            background: '#ffffff',
+            primary: '#000000',
+            secondary: '#e5e7eb',
+            text: '#1f2937',
+            link: '#000000',
+            buttonText: '#ffffff'
+        },
+        typography: { fontFamily: 'Inter, sans-serif' },
+        borders: { radius: '8px', width: '1px', style: 'solid' },
+        dividers: { style: 'solid', width: '1px', color: '#e5e7eb' }
+    }
+
+    const { data: themeData, error: themeError } = await supabase.from('themes').insert({
+        name: 'Défaut',
+        config: defaultThemeConfig,
+        user_id: user.id,
+        project_id: data.id
+    }).select().single()
+
+    if (themeError) {
+        console.error('Failed to create default theme:', themeError)
+    } else if (themeData) {
+        // 4. Set as Default Theme for Project
+        const { error: updateError } = await supabase
+            .from('projects')
+            .update({ default_theme_id: themeData.id })
+            .eq('id', data.id)
+
+        if (updateError) {
+            console.error('Failed to update project default_theme_id:', updateError)
+        } else {
+            console.log('Project created with default theme:', themeData.id)
+        }
+    }
+
+    return { data }
 }
 
 export async function createPage(projectId: string, formData: FormData) {
     const supabase = await createClient()
     const title = formData.get('title') as string
     const slug = formData.get('slug') as string
+    const description = formData.get('description') as string
 
     if (!title || !slug) {
         throw new Error('Le titre et le slug sont requis')
+    }
+
+    if (title.length > 50 || slug.length > 50) {
+        return { error: 'Titre ou slug trop long (max 50 caractères)' }
+    }
+
+    if (description.length > 200) {
+        return { error: 'La description ne doit pas dépasser 200 caractères' }
     }
 
     // Basic validation for slug
@@ -88,10 +137,42 @@ export async function createPage(projectId: string, formData: FormData) {
         throw new Error('Le slug ne doit contenir que des minuscules, des chiffres et des tirets')
     }
 
+    // Check for project default theme
+
+    // Check for project default theme
+    const { data: project } = await supabase
+        .from('projects')
+        .select('default_theme_id')
+        .eq('id', projectId)
+        .single()
+
+    let themeIdToInsert = project?.default_theme_id
+
+    // Fallback: If no default_theme_id, try to find ANY theme attached to this project
+    if (!themeIdToInsert) {
+        const { data: themes } = await supabase
+            .from('themes')
+            .select('id')
+            .eq('project_id', projectId)
+            .limit(1)
+
+        if (themes && themes.length > 0) {
+            themeIdToInsert = themes[0].id
+            console.log('--- Fallback Theme Found:', themeIdToInsert)
+        }
+    }
+
+    console.log('--- Creating Page ---')
+    console.log('Project ID:', projectId)
+    console.log('ID du thème sélectionné pour insertion:', themeIdToInsert)
+
     const { data, error } = await supabase.from('pages').insert({
         project_id: projectId,
         title,
         slug,
+        description,
+        config: {}, // Empty config to enforce theme inheritance
+        theme_id: themeIdToInsert // Assign discovered theme ID (may still be null if really no themes exist)
     }).select().single()
 
     if (error) {
@@ -316,7 +397,7 @@ export async function updateBlockPositions(projectId: string, pageId: string, up
     }
 }
 
-export async function saveTheme(name: string, config: PageConfig) {
+export async function saveTheme(name: string, config: PageConfig, projectId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -327,7 +408,8 @@ export async function saveTheme(name: string, config: PageConfig) {
         .insert({
             name,
             config,
-            user_id: user.id
+            user_id: user.id,
+            project_id: projectId
         })
         .select()
         .single()
@@ -340,7 +422,7 @@ export async function saveTheme(name: string, config: PageConfig) {
     return { success: true, theme: data }
 }
 
-export async function getThemes() {
+export async function getThemes(projectId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -349,6 +431,7 @@ export async function getThemes() {
     const { data, error } = await supabase
         .from('themes')
         .select('*')
+        .eq('project_id', projectId) // Filter by project
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -357,4 +440,147 @@ export async function getThemes() {
     }
 
     return data
+}
+
+export async function saveDefaultTheme(config: PageConfig) {
+    const { cookies } = await import('next/headers')
+    const cookieStore = await cookies()
+    cookieStore.set('korner_default_theme', JSON.stringify(config), { secure: true, httpOnly: true, sameSite: 'lax' })
+    return { success: true }
+}
+
+export async function getProjects() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+
+    const { data: projects } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+    return projects || []
+}
+
+export async function getProjectBySlug(slug: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const { data: project } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('slug', slug)
+        .eq('user_id', user.id)
+        .single()
+
+    return project
+}
+
+export async function deletePage(projectId: string, pageId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    // Verify ownership of the page via project
+    const { data: page, error: pageError } = await supabase
+        .from('pages')
+        .select('project_id')
+        .eq('id', pageId)
+        .single()
+
+    if (pageError || !page) {
+        return { error: 'Page not found' }
+    }
+
+    // Verify user owns the project
+    const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('user_id')
+        .eq('id', page.project_id)
+        .eq('user_id', user.id)
+        .single()
+
+    if (projectError || !project) {
+        return { error: 'Unauthorized' }
+    }
+
+    const { error } = await supabase
+        .from('pages')
+        .delete()
+        .eq('id', pageId)
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    revalidatePath(`/dashboard/${projectId}`)
+    return { success: true }
+}
+
+export async function updateTheme(themeId: string, name: string, config: PageConfig) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: 'Unauthorized' }
+
+    const { error } = await supabase
+        .from('themes')
+        .update({ name, config })
+        .eq('id', themeId)
+        .eq('user_id', user.id)
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    revalidatePath('/dashboard')
+    return { success: true }
+}
+
+export async function applyThemeToProject(projectId: string, themeId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: 'Unauthorized' }
+
+    // Verify ownership
+    const { data: project } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('id', projectId)
+        .eq('user_id', user.id)
+        .single()
+
+    if (!project) return { error: 'Unauthorized' }
+
+    // 1. Update Project Default Theme
+    const { error: projectUpdateError } = await supabase
+        .from('projects')
+        .update({ default_theme_id: themeId })
+        .eq('id', projectId)
+
+    if (projectUpdateError) {
+        console.error('Failed to update project default theme:', projectUpdateError)
+        return { error: projectUpdateError.message }
+    }
+
+    // 2. Update all pages in project
+    const { error: pagesUpdateError } = await supabase
+        .from('pages')
+        .update({ theme_id: themeId })
+        .eq('project_id', projectId)
+
+    if (pagesUpdateError) {
+        console.error('Failed to update pages theme:', pagesUpdateError)
+        return { error: pagesUpdateError.message }
+    }
+
+    revalidatePath(`/dashboard/${projectId}`)
+    revalidatePath(`/p/[projectSlug]`, 'layout') // Revalidate public pages potentially
+    return { success: true }
 }

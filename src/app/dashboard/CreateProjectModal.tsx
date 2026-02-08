@@ -3,18 +3,33 @@
 import { useState } from 'react'
 import { Plus, X, Loader2 } from 'lucide-react'
 import { createProject } from './actions'
+import { useRouter } from 'next/navigation'
 
-export function CreateProjectModal() {
-    const [isOpen, setIsOpen] = useState(false)
+interface CreateProjectModalProps {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+}
+
+export function CreateProjectModal({ open, onOpenChange }: CreateProjectModalProps = {}) {
+    const [internalIsOpen, setInternalIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
+    const isControlled = open !== undefined && onOpenChange !== undefined
+    const isOpen = isControlled ? open : internalIsOpen
+    const setIsOpen = isControlled ? onOpenChange : setInternalIsOpen
+    const router = useRouter()
 
     async function onSubmit(formData: FormData) {
         setLoading(true)
         setError(null)
         try {
-            await createProject(formData)
+            const { data } = await createProject(formData)
             setIsOpen(false)
+            if (data?.slug) {
+                router.push(`/dashboard/${data.slug}/pages`)
+                router.refresh()
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Une erreur est survenue')
         } finally {
@@ -24,13 +39,15 @@ export function CreateProjectModal() {
 
     return (
         <>
-            <button
-                onClick={() => setIsOpen(true)}
-                className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
-            >
-                <Plus className="h-4 w-4" />
-                Nouveau projet
-            </button>
+            {!isControlled && (
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    Nouveau projet
+                </button>
+            )}
 
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">

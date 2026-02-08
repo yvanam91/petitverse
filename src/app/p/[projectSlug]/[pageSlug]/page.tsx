@@ -1,9 +1,12 @@
 import { createClient } from '@/utils/supabase/server'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { slugify } from '@/utils/slugify'
-import type { Project, Page, Block } from '@/types/database'
-import { FileText, ExternalLink, Globe, Twitter, Instagram, Facebook, Linkedin, Github } from 'lucide-react'
+import type { Project, Page, Block, PageConfig } from '@/types/database'
+import { FileText } from 'lucide-react'
 import { Metadata } from 'next'
+import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
+import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
+import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,10 +23,10 @@ async function getPageData(projectSlug: string, pageSlug: string) {
     // 2. Fetch Page
     const { data: page } = await supabase
         .from('pages')
-        .select('*')
+        .select('*, theme:themes(*)') // Alias themes to theme to match type
         .eq('project_id', project.id)
         .eq('slug', pageSlug)
-        .single()
+        .single() // Ensure single object return
 
     if (!page) return null
 
@@ -52,7 +55,7 @@ export async function generateMetadata({
     }
 
     return {
-        title: `${data.page.title} | ${data.project.name}`,
+        title: `${data.page.meta_title || data.page.title} | ${data.project.name}`,
         description: `Découvrez la page ${data.page.title} sur ${data.project.name}.`,
     }
 }
@@ -70,21 +73,52 @@ export default async function PublicPage({
     }
 
     const { page, blocks } = data
-    const config = page.config || {}
+
+    // Security Check: Unpublished pages
+    if (page.is_published === false) {
+        redirect('/')
+    }
+
+    // Theme Inheritance Logic (Phase 1 & 3)
+    // Use Global Theme config if available, fallback to local config, or use System Default.
+    const DEFAULT_CONFIG: PageConfig = {
+        colors: {
+            background: '#ffffff',
+            primary: '#000000',
+            secondary: '#e5e7eb',
+            text: '#1f2937',
+            link: '#000000',
+            buttonText: '#ffffff'
+        },
+        typography: { fontFamily: 'Inter, sans-serif' },
+        borders: { radius: '8px', width: '1px', style: 'solid' },
+        dividers: { style: 'solid', width: '1px', color: '#e5e7eb' },
+        buttonStyle: 'rounded-md',
+        buttonVariant: 'fill'
+    }
+
+    // STRICT PRIORITY: Theme -> Page Config -> System Default
+    const effectiveConfig = (page.theme?.config || page.config || DEFAULT_CONFIG) as PageConfig
 
     // Dynamic Style Injection
     const themeStyles = {
-        '--bg-color': config.backgroundColor || '#ffffff',
-        '--primary': config.buttonColor || '#000000',
-        '--secondary': config.secondaryColor || '#e5e7eb',
-        '--text': config.textColor || '#1f2937',
-        '--link': config.linkColor || '#000000',
-        '--btn-text': config.buttonTextColor || '#ffffff',
-        '--font-family': config.fontFamily || 'Inter, sans-serif',
+        '--bg-color': effectiveConfig.colors?.background || DEFAULT_CONFIG.colors!.background,
+        '--primary': effectiveConfig.colors?.primary || DEFAULT_CONFIG.colors!.primary,
+        '--secondary': effectiveConfig.colors?.secondary || DEFAULT_CONFIG.colors!.secondary,
+        '--text': effectiveConfig.colors?.text || DEFAULT_CONFIG.colors!.text,
+        '--link': effectiveConfig.colors?.link || DEFAULT_CONFIG.colors!.link,
+        '--btn-text': effectiveConfig.colors?.buttonText || DEFAULT_CONFIG.colors!.buttonText,
+        '--font-family': effectiveConfig.typography?.fontFamily || DEFAULT_CONFIG.typography!.fontFamily,
+
+        // New Phase 1 Variables
+        '--border-radius': effectiveConfig.borders?.radius || '8px',
+        '--border-width': effectiveConfig.borders?.width || '1px',
+        '--divider-style': effectiveConfig.dividers?.style || 'solid',
+
         fontFamily: 'var(--font-family)',
         backgroundColor: 'var(--bg-color)',
         color: 'var(--text)',
-        backgroundImage: config.headerBackgroundImage ? `url(${config.headerBackgroundImage})` : 'none',
+        backgroundImage: effectiveConfig.headerBackgroundImage ? `url(${effectiveConfig.headerBackgroundImage})` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundAttachment: 'fixed'
@@ -105,46 +139,13 @@ export default async function PublicPage({
                         const content = (() => {
                             switch (block.type) {
                                 case 'header':
-                                    return (
-                                        <div className="text-center mb-6 w-full">
-                                            {block.content.url && (
-                                                <div className="relative w-28 h-28 mx-auto mb-4">
-                                                    <img
-                                                        src={block.content.url}
-                                                        alt={block.content.title}
-                                                        className="w-full h-full object-cover rounded-full border-4 border-white shadow-md"
-                                                    />
-                                                </div>
-                                            )}
-                                            {block.content.title && <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{block.content.title}</h2>}
-                                            {block.content.subtitle && <p className="text-lg opacity-80 mt-1" style={{ color: 'var(--text)' }}>{block.content.subtitle}</p>}
-                                        </div>
-                                    )
+                                    return <HeaderBlock content={block.content as any} config={effectiveConfig} />
 
                                 case 'social_grid':
-                                    const SOCIAL_ICONS = { globe: Globe, twitter: Twitter, instagram: Instagram, facebook: Facebook, linkedin: Linkedin, github: Github }
-                                    return (
-                                        <div className="flex flex-row flex-wrap justify-center gap-6 mb-4 w-full">
-                                            {block.content.links?.map((link: any, i: number) => {
-                                                const Icon = SOCIAL_ICONS[link.icon as keyof typeof SOCIAL_ICONS] || Globe
-                                                return (
-                                                    <a
-                                                        key={i}
-                                                        href={link.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="h-10 w-10 flex items-center justify-center bg-white rounded-full shadow-sm hover:scale-105 hover:shadow-md transition-all border border-gray-100"
-                                                        style={{ color: 'var(--primary)' }}
-                                                    >
-                                                        <Icon className="h-5 w-5" />
-                                                    </a>
-                                                )
-                                            })}
-                                        </div>
-                                    )
+                                    return <SocialGridBlock content={block.content as any} config={effectiveConfig} />
 
                                 case 'separator':
-                                    return <hr className="border-t my-4 w-2/3 mx-auto opacity-50" style={{ borderColor: 'var(--secondary)' }} />
+                                    return <hr className="border-t my-4 w-2/3 mx-auto opacity-50" style={{ borderColor: 'var(--secondary)', borderStyle: 'var(--divider-style)' }} />
 
                                 case 'title':
                                     return (
@@ -184,58 +185,7 @@ export default async function PublicPage({
                                     )
 
                                 case 'link':
-                                    // Helper for styles matching editor
-                                    const getButtonStyle = (): React.CSSProperties => {
-                                        const styleType = config.buttonStyle
-                                        const variant = config.buttonVariant || 'fill'
-                                        const btnColor = config.buttonColor || '#000000'
-                                        const textColor = config.buttonTextColor || '#ffffff'
-                                        const font = config.fontFamily || 'Inter, sans-serif'
-
-                                        const baseStyle: React.CSSProperties = {
-                                            borderRadius: styleType === 'rounded-full' ? '9999px' : styleType === 'rounded-none' ? '0px' : '8px',
-                                            fontFamily: font
-                                        }
-
-                                        if (variant === 'outline') {
-                                            return {
-                                                ...baseStyle,
-                                                backgroundColor: 'transparent',
-                                                color: btnColor,
-                                                border: `2px solid ${btnColor}`
-                                            }
-                                        } else if (variant === 'soft-shadow') {
-                                            return {
-                                                ...baseStyle,
-                                                backgroundColor: '#ffffff',
-                                                color: '#000000',
-                                                boxShadow: `0 4px 12px ${btnColor}40`,
-                                                border: '1px solid #f3f4f6'
-                                            }
-                                        } else {
-                                            return {
-                                                ...baseStyle,
-                                                backgroundColor: btnColor,
-                                                color: textColor,
-                                                border: 'none' // reset if needed
-                                            }
-                                        }
-                                    }
-
-                                    return (
-                                        <a
-                                            href={block.content.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="group relative flex w-full items-center justify-center px-6 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md hover:opacity-95"
-                                            style={getButtonStyle()}
-                                        >
-                                            <div className="font-medium text-lg text-center">
-                                                {block.content.title}
-                                            </div>
-                                            <ExternalLink className="absolute right-4 h-5 w-5 opacity-0 transition-opacity group-hover:opacity-100" />
-                                        </a>
-                                    )
+                                    return <LinkBlock content={block.content as any} config={effectiveConfig} />
 
                                 case 'file':
                                     return (

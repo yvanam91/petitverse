@@ -21,14 +21,17 @@ import {
     useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { addBlockWithProject, updateBlock, deleteBlock, updatePageConfig, addBlockWithContent, updateBlockPositions, saveTheme, getThemes } from '@/app/dashboard/actions'
+import { addBlockWithProject, updateBlock, deleteBlock, updatePageConfig, addBlockWithContent, updateBlockPositions } from '@/app/dashboard/actions'
 import {
-    Plus, GripVertical, Save, Loader2, Trash2, Palette, Layers,
+    Plus, GripVertical, Save, Loader2, Trash2,
     ExternalLink, FileText, Upload, Image as ImageIcon,
     Eye, EyeOff, LayoutTemplate, Minus, Globe, Twitter, Instagram, Facebook, Linkedin, Github,
-    AlignLeft, AlignCenter, AlignRight, Type, Heading, Download, Play
+    AlignLeft, AlignCenter, AlignRight, Type, Heading, Download, Play, Settings2
 } from 'lucide-react'
-import type { Block, PageConfig, Theme } from '@/types/database'
+import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
+import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
+import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
+import type { Block, PageConfig } from '@/types/database'
 import { createClient } from '@/utils/supabase/client'
 import ClientOnly from '@/components/ClientOnly'
 import { toast } from 'sonner'
@@ -38,6 +41,9 @@ interface BlockEditorProps {
     pageId: string
     initialBlocks: Block[]
     initialConfig: PageConfig
+    initialPublishedState: boolean
+    initialMetaTitle?: string
+    initialTheme?: any // Should ideally be Theme type
 }
 
 const DEFAULT_CONFIG: PageConfig = {
@@ -508,29 +514,24 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
 }
 
 
-export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }: BlockEditorProps) {
-    const [activeTab, setActiveTab] = useState<'content' | 'design'>('content')
+export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, initialPublishedState, initialMetaTitle, initialTheme }: BlockEditorProps) {
+    const [activeTab, setActiveTab] = useState<'content' | 'settings'>('content')
     // Ensure positions are sorted initially if they weren't
     const [blocks, setBlocks] = useState<Block[]>(initialBlocks.sort((a, b) => a.position - b.position))
-    const [config, setConfig] = useState<PageConfig>({ ...DEFAULT_CONFIG, ...initialConfig })
+    // FIX: Do NOT merge with default config on init, keep exactly what DB has (even if empty) to allow theme inheritance
+    // But UI needs defaults to render controls properly? We'll handle defaults in render/accessors.
+    const [config, setConfig] = useState<PageConfig>(initialConfig || {})
+    const [isPublished, setIsPublished] = useState(initialPublishedState)
+    const [metaTitle, setMetaTitle] = useState(initialMetaTitle || '')
     const [activeId, setActiveId] = useState<string | null>(null)
 
     // Block State
     const [loadingAdd, setLoadingAdd] = useState(false)
     const [edits, setEdits] = useState<Record<string, { title: string; url: string; loading: boolean }>>({})
     const [deleting, setDeleting] = useState<Record<string, boolean>>({})
-    const [savingConfig, setSavingConfig] = useState(false)
+    const [savingSettings, setSavingSettings] = useState(false)
 
-    // Theme Management State
-    const [themes, setThemes] = useState<Theme[]>([])
-    const [themeName, setThemeName] = useState('')
-    const [savingTheme, setSavingTheme] = useState(false)
 
-    useEffect(() => {
-        getThemes().then(res => {
-            if (Array.isArray(res)) setThemes(res)
-        })
-    }, [])
 
     // DnD Sensors
     const sensors = useSensors(
@@ -738,46 +739,35 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }:
     }
 
 
-    // --- Config Handlers ---
-    const handleConfigChange = (field: keyof PageConfig, value: string) => setConfig(prev => ({ ...prev, [field]: value }))
-    const handleSaveConfig = async () => {
-        setSavingConfig(true)
+    // --- Settings Handlers ---
+    // --- Settings Handlers ---
+    const handleSaveSettings = async () => {
+        setSavingSettings(true)
         try {
             await updatePageConfig(projectId, pageId, config)
-            toast.success('Thème enregistré !')
-        } catch { toast.error('Erreur sauvegarde thème') }
-        finally { setSavingConfig(false) }
+
+            // Also update published state and meta title
+            const supabase = createClient()
+            const { error } = await supabase
+                .from('pages')
+                .update({
+                    is_published: isPublished,
+                    meta_title: metaTitle
+                })
+                .eq('id', pageId)
+
+            if (error) throw error
+
+            toast.success('Réglages enregistrés !')
+        } catch (e: any) {
+            console.error(e)
+            toast.error('Erreur sauvegarde réglages')
+        } finally { setSavingSettings(false) }
     }
 
-    // --- Theme Handlers ---
-    const handleSaveTheme = async () => {
-        if (!themeName.trim()) return toast.error('Nom du thème requis')
-        setSavingTheme(true)
-        try {
-            const result = await saveTheme(themeName, config)
-            if (result.error) throw new Error(result.error)
 
-            if (result.theme) {
-                // @ts-ignore
-                setThemes(prev => [result.theme, ...prev])
-                setThemeName('')
-                toast.success('Thème enregistré')
-            }
-        } catch (err) {
-            console.error(err)
-            toast.error('Erreur sauvegarde thème')
-        } finally {
-            setSavingTheme(false)
-        }
-    }
 
-    const handleApplyTheme = (themeId: string) => {
-        const theme = themes.find(t => t.id === themeId)
-        if (theme) {
-            setConfig(prev => ({ ...prev, ...theme.config }))
-            toast.success('Thème appliqué')
-        }
-    }
+
 
     const handleHeaderBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -815,130 +805,92 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }:
         }
     }
 
-    const applyPreset = (name: 'Dark Neon' | 'Minimalist' | 'Pastel Garden') => {
-        let preset: Partial<PageConfig> = {}
-        if (name === 'Dark Neon') {
-            preset = {
-                backgroundColor: '#0f172a',
-                secondaryColor: '#334155',
-                textColor: '#f8fafc',
-                linkColor: '#a855f7',
-                buttonColor: '#3b82f6',
-                buttonTextColor: '#ffffff',
-                buttonStyle: 'rounded-none',
-                fontFamily: 'Inter, sans-serif'
-            }
-        } else if (name === 'Minimalist') {
-            preset = {
-                backgroundColor: '#ffffff',
-                secondaryColor: '#e5e7eb',
-                textColor: '#1f2937',
-                linkColor: '#000000',
-                buttonColor: '#000000',
-                buttonTextColor: '#ffffff',
-                buttonStyle: 'rounded-md',
-                fontFamily: 'Inter, sans-serif'
-            }
-        } else if (name === 'Pastel Garden') {
-            preset = {
-                backgroundColor: '#fdf4ff',
-                secondaryColor: '#f0abfc',
-                textColor: '#4a044e',
-                linkColor: '#d946ef',
-                buttonColor: '#fae8ff',
-                buttonTextColor: '#86198f',
-                buttonStyle: 'rounded-full',
-                fontFamily: 'Inter, sans-serif'
-            }
-        }
-        setConfig(prev => ({ ...prev, ...preset }))
-        toast.success(`Preset "${name}" appliqué`)
-    }
+
 
     // --- Sub components for rendering ---
     const renderPreview = () => {
-        // Force re-render when config changes
-        const previewKey = JSON.stringify(config)
-        const { backgroundColor, buttonColor, buttonTextColor, buttonStyle, buttonVariant, fontFamily } = config
-
-        // Helper to get button inline styles
-        const getButtonStyle = (): React.CSSProperties => {
-            const baseStyle: React.CSSProperties = {
-                borderRadius: buttonStyle === 'rounded-full' ? '9999px' : buttonStyle === 'rounded-none' ? '0px' : '8px',
-                fontFamily: fontFamily || 'Inter, sans-serif'
-            }
-
-            if (buttonVariant === 'outline') {
-                return {
-                    ...baseStyle,
-                    backgroundColor: 'transparent',
-                    color: buttonColor || '#000000',
-                    border: `2px solid ${buttonColor || '#000000'}`
-                }
-            } else if (buttonVariant === 'soft-shadow') {
-                return {
-                    ...baseStyle,
-                    backgroundColor: '#ffffff',
-                    color: '#000000',
-                    boxShadow: `0 4px 12px ${buttonColor || '#000000'}40`, // Approx 25% opacity using hex
-                    border: '1px solid #f3f4f6'
-                }
-            } else {
-                // Default 'fill'
-                return {
-                    ...baseStyle,
-                    backgroundColor: buttonColor || '#000000',
-                    color: buttonTextColor || '#ffffff',
-                    border: 'none'
-                }
-            }
+        // --- Theme + Config Logic ---
+        const DEFAULT_THEME_CONFIG: PageConfig = {
+            colors: {
+                background: '#ffffff',
+                primary: '#000000',
+                secondary: '#e5e7eb',
+                text: '#1f2937',
+                link: '#000000',
+                buttonText: '#ffffff'
+            },
+            typography: { fontFamily: 'Inter, sans-serif' },
+            borders: { radius: '8px', width: '1px', style: 'solid' },
+            dividers: { style: 'solid', width: '1px', color: '#e5e7eb' },
+            buttonStyle: 'rounded-md',
+            buttonVariant: 'fill'
         }
+
+        // Priority: Theme > Local (if present) > Default
+        // Priority: Theme > Local > Default
+        // Strict Logic as requested:
+        const effectiveThemeConfig = (initialTheme && initialTheme.config && Object.keys(initialTheme.config).length > 0)
+            ? initialTheme.config
+            : config
+
+        const previewKey = JSON.stringify(config) // Still re-render on local changes
+
+        // --- Color Helper (Strictly using new structure) ---
+        const getBackground = () => effectiveThemeConfig.colors?.background || DEFAULT_THEME_CONFIG.colors!.background
+        const getText = () => effectiveThemeConfig.colors?.text || DEFAULT_THEME_CONFIG.colors!.text
+        const getFont = () => effectiveThemeConfig.typography?.fontFamily || DEFAULT_THEME_CONFIG.typography!.fontFamily
+        const getSecondary = () => effectiveThemeConfig.colors?.secondary || DEFAULT_THEME_CONFIG.colors!.secondary
 
         const containerStyle: React.CSSProperties = {
-            backgroundColor: backgroundColor || '#ffffff',
-            fontFamily: fontFamily || 'Inter, sans-serif'
+            backgroundColor: getBackground(),
+            fontFamily: getFont(),
+            color: getText()
         }
 
-        const btnStyle = getButtonStyle()
+        const headerBg = effectiveThemeConfig.headerBackgroundImage
 
         return (
-            <div key={previewKey} className="h-[600px] w-full max-w-[375px] mx-auto overflow-y-auto border-8 border-gray-800 rounded-[3rem] shadow-2xl transition-colors duration-200" style={containerStyle}>
-                <div className="h-full w-full p-6 flex flex-col gap-4">
+            <div key={previewKey} className="h-[600px] w-full max-w-[375px] mx-auto overflow-y-auto border-8 border-gray-800 rounded-[3rem] shadow-2xl transition-colors duration-200 relative overflow-hidden scrollbar-hide" style={containerStyle}>
+
+                {/* Debug Theme Name */}
+                {initialTheme && (
+                    <div className="absolute top-0 left-0 right-0 bg-yellow-300 text-xs text-black p-1 z-[100] text-center opacity-80">
+                        Theme: {initialTheme.name} (Debug)
+                    </div>
+                )}
+
+                {/* Header Background */}
+                {headerBg && (
+                    <div className="absolute top-0 left-0 right-0 h-72 z-0">
+                        <img src={headerBg} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"></div>
+                    </div>
+                )}
+
+                <div className={`h-full w-full p-6 flex flex-col gap-4 relative z-10 ${headerBg ? 'text-white' : ''}`}>
                     {/* Preview blocks should follow visibility */}
                     {blocks.filter(b => b.is_visible !== false).map(block => (
                         <div key={block.id} className="w-full">
-                            {block.type === 'header' && (
-                                <div className="text-center mb-6">
-                                    {block.content.url && <img src={block.content.url} className="w-24 h-24 rounded-full mx-auto mb-3 object-cover border-4 border-white shadow-sm" />}
-                                    <h1 className="text-xl font-bold">{block.content.title}</h1>
-                                    {block.content.subtitle && <p className="text-sm opacity-80 mt-1">{block.content.subtitle}</p>}
-                                </div>
-                            )}
-                            {block.type === 'social_grid' && (
-                                <div className="flex flex-wrap justify-center gap-6 mb-4">
-                                    {block.content.links?.map((link: any, i: number) => {
-                                        const Icon = SOCIAL_ICONS.find(ic => ic.value === link.icon)?.icon || Globe
-                                        return (
-                                            <a key={i} href={link.url} target="_blank" className="p-2 bg-white rounded-lg shadow-sm hover:scale-105 transition-transform" style={{ color: buttonColor || '#000000' }}>
-                                                <Icon className="h-5 w-5" />
-                                            </a>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                            {block.type === 'separator' && <hr className="border-t border-gray-200 my-4" />}
+                            {block.type === 'header' && <HeaderBlock content={block.content as any} config={effectiveThemeConfig} />}
+
+                            {block.type === 'social_grid' && <SocialGridBlock content={block.content as any} config={effectiveThemeConfig} />}
+
+                            {block.type === 'separator' && <hr className="border-t border-dashed my-4" style={{ borderColor: getSecondary() }} />}
+
                             {block.type === 'title' && (
-                                <h2 className={`font-bold text-lg mb-2 text-gray-900 ${block.content.align === 'center' ? 'text-center' : block.content.align === 'right' ? 'text-right' : 'text-left'}`}>
+                                <h2 className={`font-bold text-lg mb-2 ${headerBg ? 'text-white' : ''} ${block.content.align === 'center' ? 'text-center' : block.content.align === 'right' ? 'text-right' : 'text-left'}`} style={{ color: headerBg ? '#ffffff' : getText() }}>
                                     {block.content.title}
                                 </h2>
                             )}
+
                             {block.type === 'text' && (
-                                <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">
+                                <p className={`text-sm whitespace-pre-wrap mb-2 ${headerBg ? 'text-white/90' : ''}`} style={{ color: headerBg ? 'rgba(255,255,255,0.9)' : getText() }}>
                                     {block.content.text}
                                 </p>
                             )}
+
                             {block.type === 'hero' && (
-                                <div className="flex flex-col gap-3 rounded-lg overflow-hidden border border-gray-200 pb-3">
+                                <div className="flex flex-col gap-3 rounded-lg overflow-hidden border border-gray-200 pb-3 bg-white">
                                     {block.content.url && <img src={block.content.url} className="w-full h-32 object-cover" />}
                                     <div className="px-3">
                                         <h3 className="font-bold text-gray-900">{block.content.title}</h3>
@@ -946,12 +898,11 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }:
                                     </div>
                                 </div>
                             )}
-                            {block.type === 'link' && (
-                                <a href={block.content.url} target="_blank" className="flex items-center justify-center p-4 w-full shadow-sm hover:opacity-90 transition-opacity" style={btnStyle}>
-                                    <span className="font-medium">{block.content.title}</span>
-                                </a>
-                            )}
+
+                            {block.type === 'link' && <LinkBlock content={block.content as any} config={effectiveThemeConfig} />}
+
                             {block.type === 'image' && <img src={block.content.url} className="w-full rounded-lg shadow-sm" />}
+
                             {block.type === 'file' && (
                                 <a href={block.content.url} download className="flex items-center gap-3 p-3 bg-white/90 rounded-lg shadow-sm border border-gray-200/50">
                                     <FileText className="h-5 w-5 text-gray-600" />
@@ -965,6 +916,8 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }:
         )
     }
 
+
+
     return (
         <div className="flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-12rem)]">
             <div className="flex-1 space-y-6">
@@ -972,10 +925,10 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }:
                 <div className="border-b border-gray-200">
                     <nav className="-mb-px flex space-x-8">
                         <button onClick={() => setActiveTab('content')} className={`${activeTab === 'content' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500'} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2`}>
-                            <Layers className="h-4 w-4" /> Contenu
+                            <LayoutTemplate className="h-4 w-4" /> Contenu
                         </button>
-                        <button onClick={() => setActiveTab('design')} className={`${activeTab === 'design' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500'} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2`}>
-                            <Palette className="h-4 w-4" /> Apparence
+                        <button onClick={() => setActiveTab('settings')} className={`${activeTab === 'settings' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500'} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2`}>
+                            <Settings2 className="h-4 w-4" /> Réglages
                         </button>
                     </nav>
                 </div>
@@ -1061,150 +1014,58 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }:
                     </div>
                 )}
 
-                {activeTab === 'design' && (
-                    <div className="space-y-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                        {/* 1. PRESETS */}
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-900 mb-3 uppercase tracking-wider flex items-center gap-2">
-                                <Palette className="h-4 w-4" /> Presets Rapides
+                {activeTab === 'settings' && (
+                    <div className="space-y-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        {/* Publication Status */}
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <Globe className="h-4 w-4 text-indigo-500" />
+                                Publication
                             </h3>
-                            <div className="grid grid-cols-3 gap-2">
-                                {['Dark Neon', 'Minimalist', 'Pastel Garden'].map((name) => (
-                                    <button
-                                        key={name}
-                                        onClick={() => applyPreset(name as any)}
-                                        className="px-3 py-2 text-xs font-medium rounded-md border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-all text-center"
-                                    >
-                                        {name}
-                                    </button>
-                                ))}
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm text-gray-700">Publier la page</span>
+                                <button
+                                    onClick={() => setIsPublished(!isPublished)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isPublished ? 'bg-green-500' : 'bg-gray-200'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isPublished ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
                             </div>
+                            <p className="text-xs text-gray-500 text-justify leading-relaxed">
+                                Si cette page est dépubliée, elle ne sera plus accessible et les visiteurs seront redirigés vers la page d'accueil de PetitVerse.
+                            </p>
                         </div>
 
-                        <hr className="border-gray-100" />
-
-                        {/* 2. THEMES MANAGER */}
+                        {/* SEO Settings */}
                         <div>
-                            <h3 className="text-sm font-medium text-gray-900 mb-3 uppercase tracking-wider flex items-center gap-2">
-                                <Layers className="h-4 w-4" /> Mes Thèmes
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <Type className="h-4 w-4 text-indigo-500" />
+                                SEO & Métadonnées
                             </h3>
-                            <div className="space-y-3">
-                                {/* Save Theme */}
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Nom du nouveau thème..."
-                                        value={themeName}
-                                        onChange={(e) => setThemeName(e.target.value)}
-                                        className="flex-1 rounded-md border-gray-300 shadow-sm sm:text-sm p-2 border"
-                                    />
-                                    <button
-                                        onClick={handleSaveTheme}
-                                        disabled={savingTheme}
-                                        className="px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                                    >
-                                        {savingTheme ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    </button>
-                                </div>
-
-                                {/* Load Theme */}
-                                {themes.length > 0 && (
-                                    <select
-                                        onChange={(e) => handleApplyTheme(e.target.value)}
-                                        className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 border text-gray-700"
-                                        defaultValue=""
-                                    >
-                                        <option value="" disabled>Appliquer un design existant...</option>
-                                        {themes.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
-                                )}
+                            <div>
+                                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                                    Meta Titre
+                                </label>
+                                <input
+                                    type="text"
+                                    value={metaTitle}
+                                    onChange={(e) => setMetaTitle(e.target.value)}
+                                    placeholder="Titre dans l'onglet du navigateur"
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Si vide, le titre de la page sera utilisé.
+                                </p>
                             </div>
                         </div>
 
-                        <hr className="border-gray-100" />
-
-                        {/* 3. COLORS & STYLE */}
+                        {/* Legacy Header Background Image (Kept as requested) */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider">Couleurs & Style</h3>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Fond Page</label>
-                                    <div className="flex items-center gap-2">
-                                        <input type="color" value={config.backgroundColor || '#ffffff'} onChange={e => handleConfigChange('backgroundColor', e.target.value)} className="h-8 w-8 rounded border cursor-pointer p-0" />
-                                        <span className="text-xs font-mono text-gray-500 uppercase">{config.backgroundColor}</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Secondaire</label>
-                                    <div className="flex items-center gap-2">
-                                        <input type="color" value={config.secondaryColor || '#e5e7eb'} onChange={e => handleConfigChange('secondaryColor', e.target.value)} className="h-8 w-8 rounded border cursor-pointer p-0" />
-                                        <span className="text-xs font-mono text-gray-500 uppercase">{config.secondaryColor}</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Texte Principal</label>
-                                    <div className="flex items-center gap-2">
-                                        <input type="color" value={config.textColor || '#1f2937'} onChange={e => handleConfigChange('textColor', e.target.value)} className="h-8 w-8 rounded border cursor-pointer p-0" />
-                                        <span className="text-xs font-mono text-gray-500 uppercase">{config.textColor}</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Liens & Accents</label>
-                                    <div className="flex items-center gap-2">
-                                        <input type="color" value={config.linkColor || '#000000'} onChange={e => handleConfigChange('linkColor', e.target.value)} className="h-8 w-8 rounded border cursor-pointer p-0" />
-                                        <span className="text-xs font-mono text-gray-500 uppercase">{config.linkColor}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 4. BUTTONS SPECIFIC */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider">Boutons</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Fond Bouton</label>
-                                    <div className="flex items-center gap-2">
-                                        <input type="color" value={config.buttonColor || '#000000'} onChange={e => handleConfigChange('buttonColor', e.target.value)} className="h-8 w-8 rounded border cursor-pointer p-0" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Texte Bouton</label>
-                                    <div className="flex items-center gap-2">
-                                        <input type="color" value={config.buttonTextColor || '#ffffff'} onChange={e => handleConfigChange('buttonTextColor', e.target.value)} className="h-8 w-8 rounded border cursor-pointer p-0" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Forme</label>
-                                    <select value={config.buttonStyle || 'rounded-md'} onChange={e => handleConfigChange('buttonStyle', e.target.value)} className="block w-full rounded-md border-gray-300 p-1.5 border text-sm">
-                                        <option value="rounded-none">Carré</option>
-                                        <option value="rounded-md">Arrondi</option>
-                                        <option value="rounded-full">Pilule</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Style</label>
-                                    <select value={config.buttonVariant || 'fill'} onChange={e => handleConfigChange('buttonVariant', e.target.value)} className="block w-full rounded-md border-gray-300 p-1.5 border text-sm">
-                                        <option value="fill">Rempli</option>
-                                        <option value="outline">Contour</option>
-                                        <option value="soft-shadow">Ombre</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-
-                        {/* 5. HEADER & TYPOGRAPHY */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider">En-tête & Police</h3>
+                            <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                <ImageIcon className="h-4 w-4" /> Image d&apos;en-tête (Optionnel)
+                            </h3>
 
                             <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Image de fond (Header)</label>
                                 <div className="flex items-center gap-2">
                                     <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 text-sm text-gray-600">
                                         <Upload className="h-4 w-4" />
@@ -1224,21 +1085,10 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig }:
                                     )}
                                 </div>
                             </div>
-
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Police d'écriture</label>
-                                <select value={config.fontFamily || 'Inter, sans-serif'} onChange={e => handleConfigChange('fontFamily', e.target.value)} className="block w-full rounded-md border-gray-300 p-2 border text-sm">
-                                    <option value="Inter, sans-serif">Inter</option>
-                                    <option value="Nunito, sans-serif">Nunito</option>
-                                    <option value="Roboto, sans-serif">Roboto</option>
-                                    <option value="Playfair Display, serif">Playfair Display</option>
-                                    <option value="Courier New, monospace">Courier New</option>
-                                </select>
-                            </div>
                         </div>
 
-                        <button onClick={handleSaveConfig} disabled={savingConfig} className="w-full flex justify-center items-center gap-2 bg-indigo-600 text-white p-3 rounded-md hover:bg-indigo-700 disabled:opacity-50 font-medium">
-                            {savingConfig ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} Enregistrer les modifications
+                        <button onClick={handleSaveSettings} disabled={savingSettings} className="w-full flex justify-center items-center gap-2 bg-indigo-600 text-white p-3 rounded-md hover:bg-indigo-700 disabled:opacity-50 font-medium">
+                            {savingSettings ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} Enregistrer les réglages
                         </button>
                     </div>
                 )}
