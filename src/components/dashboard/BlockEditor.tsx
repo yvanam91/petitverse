@@ -22,15 +22,11 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { addBlockWithProject, updateBlock, deleteBlock, updatePageConfig, addBlockWithContent, updateBlockPositions } from '@/app/dashboard/actions'
-import {
-    Plus, GripVertical, Save, Loader2, Trash2,
-    ExternalLink, FileText, Upload, Image as ImageIcon,
-    Eye, EyeOff, LayoutTemplate, Minus, Globe, Twitter, Instagram, Facebook, Linkedin, Github,
-    AlignLeft, AlignCenter, AlignRight, Type, Heading, Download, Play, Settings2
-} from 'lucide-react'
+import { Plus, GripVertical, Trash2, Save, Eye, EyeOff, LayoutTemplate, Type, Heading, Minus, Image as ImageIcon, Twitter, Upload, Loader2, Globe, Settings2, FileText, AlignLeft, AlignCenter, AlignRight, Columns, Instagram, Facebook, Linkedin, Github } from 'lucide-react'
 import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
 import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
 import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
+import { DoubleLinkBlock } from '@/components/shared/blocks/DoubleLinkBlock'
 import type { Block, PageConfig } from '@/types/database'
 import { createClient } from '@/utils/supabase/client'
 import ClientOnly from '@/components/ClientOnly'
@@ -96,6 +92,44 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
     }
 
     // --- Block Specific Renders ---
+
+    const renderDoubleLinkBlock = () => {
+        const links = block.content.links || [{ label: 'Lien 1', url: '' }, { label: 'Lien 2', url: '' }]
+
+        const updateLink = (index: number, field: 'label' | 'url', value: string) => {
+            const newLinks = [...links]
+            newLinks[index] = { ...newLinks[index], [field]: value }
+            onUpdateContent({ ...block.content, links: newLinks })
+        }
+
+        return (
+            <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    {links.map((link: any, index: number) => (
+                        <div key={index} className="space-y-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <h4 className="text-xs font-semibold uppercase text-gray-500">Lien {index + 1}</h4>
+                            <div>
+                                <input
+                                    type="text"
+                                    value={link.label || ''}
+                                    onChange={(e) => updateLink(index, 'label', e.target.value)}
+                                    placeholder={`Titre du lien ${index + 1}`}
+                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border mb-2"
+                                />
+                                <input
+                                    type="url"
+                                    value={link.url || ''}
+                                    onChange={(e) => updateLink(index, 'url', e.target.value)}
+                                    placeholder="https://..."
+                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
 
     const renderHeaderBlock = () => {
         const title = isEditing ? editState.title : block.content.title
@@ -460,16 +494,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                     )}
                 </div>
 
-                {/* Grid Width Toggle in Footer */}
-                <div className="flex items-center gap-2 mb-2 text-xs text-gray-500">
-                    <span className="uppercase tracking-wide">Largeur:</span>
-                    <button
-                        onClick={() => onUpdateContent({ ...block.content, width: block.content.width === 'half' ? 'full' : 'half' })}
-                        className={`px-2 py-0.5 rounded transition-colors ${block.content.width === 'half' ? 'bg-indigo-100 text-indigo-700 font-medium' : 'bg-gray-100 hover:bg-gray-200'}`}
-                    >
-                        {block.content.width === 'half' ? '½ Moitié' : 'Pleine'}
-                    </button>
-                </div>
+                {/* Grid Width Toggle Removed */}
 
                 {block.type === 'header' && renderHeaderBlock()}
                 {block.type === 'social_grid' && renderSocialGrid()}
@@ -477,6 +502,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                 {block.type === 'title' && renderTitleBlock()}
                 {block.type === 'text' && renderTextBlock()}
                 {block.type === 'hero' && renderHeroBlock()}
+                {block.type === 'double-link' && renderDoubleLinkBlock()}
                 {['link', 'file', 'image'].includes(block.type) && renderStandardContent()}
             </div>
 
@@ -594,6 +620,7 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
             if (type === 'title') initialContent = { title: 'Nouveau Titre', align: 'left' }
             if (type === 'text') initialContent = { text: 'Votre texte ici...' }
             if (type === 'hero') initialContent = { title: 'Titre Hero', text: 'Description du hero', url: '' }
+            if (type === 'double-link') initialContent = { links: [{ label: 'Lien 1', url: '' }, { label: 'Lien 2', url: '' }] }
 
             const result = await addBlockWithContent(projectId, pageId, type, initialContent)
 
@@ -901,6 +928,8 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
 
                             {block.type === 'link' && <LinkBlock content={block.content as any} config={effectiveThemeConfig} />}
 
+                            {block.type === 'double-link' && <DoubleLinkBlock content={block.content as any} config={effectiveThemeConfig} />}
+
                             {block.type === 'image' && <img src={block.content.url} className="w-full rounded-lg shadow-sm" />}
 
                             {block.type === 'file' && (
@@ -959,6 +988,9 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                             </button>
                             <button onClick={() => handleAddBlock('hero')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
                                 <ImageIcon className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">Hero</span>
+                            </button>
+                            <button onClick={() => handleAddBlock('double-link')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
+                                <Columns className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">2 Liens</span>
                             </button>
 
                             <button onClick={() => fileInputRef.current?.click()} disabled={loadingAdd} className="md:col-span-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors text-gray-500 hover:text-indigo-600 bg-white">

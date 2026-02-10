@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FileText, Palette, Wrench, Settings, Plus, Folder, ChevronDown } from 'lucide-react'
+import { FileText, Palette, Wrench, Settings, Plus, Folder, ChevronDown, LogOut } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { signOut } from '@/app/auth/actions'
 import { CreateProjectModal } from '@/app/dashboard/CreateProjectModal'
 import type { Project } from '@/types/database'
 
@@ -74,8 +75,8 @@ export function Sidebar({ projectSlug, projects, currentProject }: SidebarProps)
                                         setIsDropdownOpen(false)
                                     }}
                                     className={`w-full flex items-center px-4 py-2 text-sm text-left ${project.id === currentProject.id
-                                            ? 'bg-indigo-50 text-indigo-700'
-                                            : 'text-gray-700 hover:bg-gray-50'
+                                        ? 'bg-indigo-50 text-indigo-700'
+                                        : 'text-gray-700 hover:bg-gray-50'
                                         }`}
                                 >
                                     <Folder className="h-4 w-4 mr-2 opacity-50" />
@@ -133,12 +134,23 @@ export function Sidebar({ projectSlug, projects, currentProject }: SidebarProps)
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-100">
-                <div className="flex items-center gap-3 px-2">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shrink-0"></div>
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-gray-900 truncate">Mon Compte</span>
-                        <span className="text-xs text-gray-500">Plan Gratuit</span>
+                <div className="flex items-center justify-between px-2">
+                    <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shrink-0"></div>
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium text-gray-900 truncate">Mon Compte</span>
+                            <span className="text-xs text-gray-500">Plan Gratuit</span>
+                        </div>
                     </div>
+                    <form action={signOut}>
+                        <button
+                            type="submit"
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-md transition-colors"
+                            aria-label="Se déconnecter"
+                        >
+                            <LogOut className="h-4 w-4" />
+                        </button>
+                    </form>
                 </div>
             </div>
 

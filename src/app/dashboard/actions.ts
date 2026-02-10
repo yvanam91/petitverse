@@ -16,7 +16,18 @@ export async function deleteProject(projectId: string) {
         return { error: 'Unauthorized' }
     }
 
-    // 2. Verify Ownership & Delete
+    // 2. Fetch user's other projects BEFORE deletion to determine redirect target
+    const { data: projects } = await supabase
+        .from('projects')
+        .select('slug, created_at')
+        .eq('user_id', user.id)
+        .neq('id', projectId) // Exclude current project
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+    const nextProject = projects && projects.length > 0 ? projects[0] : null
+
+    // 3. Verify Ownership & Delete
     const { error } = await supabase
         .from('projects')
         .delete()
@@ -34,7 +45,71 @@ export async function deleteProject(projectId: string) {
     await new Promise(resolve => setTimeout(resolve, 500))
 
     revalidatePath('/dashboard')
-    return { success: true }
+
+    // 4. Smart Redirect
+    if (nextProject) {
+        redirect(`/dashboard/${nextProject.slug}`)
+    } else {
+        redirect('/dashboard')
+    }
+}
+
+export async function updateProjectName(projectId: string, newName: string) {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return { error: 'Unauthorized' }
+    }
+
+    if (!newName || newName.trim().length === 0) {
+        return { error: 'Le nom du projet ne peut pas être vide' }
+    }
+
+    const slug = newName.toLowerCase()
+        .replace(/[^\w\s-]/g, '') // Remove special chars
+        .replace(/\s+/g, '-')     // Replace spaces with hyphens
+        .replace(/--+/g, '-')     // Replace multiple hyphens
+        .trim()
+
+    if (!slug) {
+        return { error: 'Le nom génère un slug invalide' }
+    }
+
+    // Check for slug uniqueness (excluding current project)
+    const { data: existing } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('slug', slug)
+        .neq('id', projectId) // Don't block if we keep same slug (though slug derived from name usually changes if name changes)
+        .single()
+
+    if (existing) {
+        // Append random suffix if slug taken
+        // Or simply error. Implementation plan said "regenerate slug".
+        // Let's try to append a random string for now or just error.
+        // User request didn't specify handling collisions explicitly other than "regenerate slug".
+        // Let's error for now to keep it clean, or maybe append 4 random chars?
+        // Let's error to let user pick another name if collision.
+        return { error: 'Ce nom de projet est déjà pris (slug existant)' }
+    }
+
+    const { error } = await supabase
+        .from('projects')
+        .update({ name: newName, slug: slug })
+        .eq('id', projectId)
+        .eq('user_id', user.id)
+
+    if (error) {
+        console.error('Update project error:', error)
+        return { error: error.message }
+    }
+
+    revalidatePath('/dashboard')
+    revalidatePath(`/dashboard/${slug}`) // New path
+    // Old path revalidation is tricky if we don't know the old slug here, but dashboard list will update.
+
+    return { success: true, newSlug: slug }
 }
 
 export async function createProject(formData: FormData) {

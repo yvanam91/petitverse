@@ -4,7 +4,7 @@ export type Profile = {
     email: string
 }
 
-export type BlockType = 'text' | 'image' | 'video' | 'button' | 'hero' | 'link' | 'file' | 'header' | 'social_grid' | 'separator' | 'title'
+export type BlockType = 'text' | 'image' | 'video' | 'button' | 'hero' | 'link' | 'double-link' | 'file' | 'header' | 'social_grid' | 'separator' | 'title'
 
 export interface Block {
     id: string

@@ -7,6 +7,7 @@ import { Metadata } from 'next'
 import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
 import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
 import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
+import { DoubleLinkBlock } from '@/components/shared/blocks/DoubleLinkBlock'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,6 +161,9 @@ export default async function PublicPage({
                                             {block.content.text}
                                         </div>
                                     )
+
+                                case 'double-link':
+                                    return <DoubleLinkBlock content={block.content as any} config={effectiveConfig} />
 
                                 case 'hero':
                                     return (
