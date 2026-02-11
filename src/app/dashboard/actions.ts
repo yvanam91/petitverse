@@ -135,6 +135,20 @@ export async function createProject(formData: FormData) {
     // Ensure slug is unique if needed, but for now simple generation
     // Ideally we should check existence or let DB handle unique constraint error
 
+    // Check for slug uniqueness PER USER
+    const { data: existingProject } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('slug', slug)
+        .eq('user_id', user.id)
+        .single()
+
+    if (existingProject) {
+        return { error: 'Vous avez déjà un projet avec ce nom.' }
+    }
+
+    // Ensure theme_id is associated (per user rules) - verified later in flow by creating default theme
+
     const { data, error } = await supabase.from('projects').insert({
         name,
         slug,
@@ -456,11 +470,15 @@ export async function updateBlockPositions(projectId: string, pageId: string, up
 
         revalidatePath(`/dashboard/${projectId}/${pageId}`)
         if (project.slug) {
-            revalidatePath(`/p/${project.slug}`)
+            // Fetch username for revalidation path
+            const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
+            if (profile?.username) {
+                revalidatePath(`/p/${profile.username}/${project.slug}`)
 
-            const { data: page } = await supabase.from('pages').select('slug').eq('id', pageId).single()
-            if (page) {
-                revalidatePath(`/p/${project.slug}/${page.slug}`)
+                const { data: page } = await supabase.from('pages').select('slug').eq('id', pageId).single()
+                if (page) {
+                    revalidatePath(`/p/${profile.username}/${project.slug}/${page.slug}`)
+                }
             }
         }
 
@@ -656,6 +674,6 @@ export async function applyThemeToProject(projectId: string, themeId: string) {
     }
 
     revalidatePath(`/dashboard/${projectId}`)
-    revalidatePath(`/p/[projectSlug]`, 'layout') // Revalidate public pages potentially
+    revalidatePath(`/p/[username]/[projectSlug]`, 'layout') // Revalidate public pages potentially
     return { success: true }
 }

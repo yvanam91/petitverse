@@ -9,9 +9,10 @@ import { PageCard } from './PageCard'
 interface ProjectViewProps {
     project: Project
     initialPages: Page[]
+    username?: string | null
 }
 
-export function ProjectView({ project, initialPages }: ProjectViewProps) {
+export function ProjectView({ project, initialPages, username }: ProjectViewProps) {
     const [pages, setPages] = useState<Page[]>(initialPages)
 
     const handlePageCreated = (newPage: Page) => {
@@ -47,6 +48,7 @@ export function ProjectView({ project, initialPages }: ProjectViewProps) {
                                 page={page}
                                 projectSlug={project.slug}
                                 onDelete={handlePageDeleted}
+                                username={username}
                             />
                         ))}
 

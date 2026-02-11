@@ -12,9 +12,10 @@ interface PageCardProps {
     page: Page
     projectSlug: string
     onDelete?: (pageId: string) => void
+    username?: string | null
 }
 
-export function PageCard({ page, projectSlug, onDelete }: PageCardProps) {
+export function PageCard({ page, projectSlug, onDelete, username }: PageCardProps) {
     const router = useRouter()
     const [isDeleting, setIsDeleting] = useState(false)
 
@@ -93,15 +94,17 @@ export function PageCard({ page, projectSlug, onDelete }: PageCardProps) {
                         <Edit className="h-4 w-4" />
                     </Link> */}
 
-                    <a
-                        href={`/p/${projectSlug}/${page.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <ExternalLink className="h-4 w-4" />
-                    </a>
+                    {username && (
+                        <a
+                            href={`/p/${username}/${projectSlug}/${page.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                        </a>
+                    )}
                 </div>
             </div>
         </div>

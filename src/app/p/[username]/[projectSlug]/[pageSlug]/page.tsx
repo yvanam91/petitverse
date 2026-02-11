@@ -12,16 +12,29 @@ import { DoubleLinkBlock } from '@/components/shared/blocks/DoubleLinkBlock'
 export const dynamic = 'force-dynamic'
 
 // Fetch logic separated for Metadata and Page
-async function getPageData(projectSlug: string, pageSlug: string) {
+async function getPageData(username: string, projectSlug: string, pageSlug: string) {
     const supabase = await createClient()
 
-    // 1. Find Project (In-memory slug check as per current limitations)
-    const { data: projects } = await supabase.from('projects').select('*')
-    const project = (projects as Project[] | null)?.find(p => slugify(p.name) === projectSlug)
+    // 1. Find User by Username
+    const { data: user } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .single()
+
+    if (!user) return null
+
+    // 2. Find Project
+    const { data: project } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('slug', projectSlug)
+        .eq('user_id', user.id)
+        .single()
 
     if (!project) return null
 
-    // 2. Fetch Page
+    // 3. Fetch Page
     const { data: page } = await supabase
         .from('pages')
         .select('*, theme:themes(*)') // Alias themes to theme to match type
@@ -31,7 +44,7 @@ async function getPageData(projectSlug: string, pageSlug: string) {
 
     if (!page) return null
 
-    // 3. Fetch Blocks
+    // 4. Fetch Blocks
     const { data: blocks } = await supabase
         .from('blocks')
         .select('*')
@@ -44,10 +57,10 @@ async function getPageData(projectSlug: string, pageSlug: string) {
 export async function generateMetadata({
     params,
 }: {
-    params: Promise<{ projectSlug: string; pageSlug: string }>
+    params: Promise<{ username: string; projectSlug: string; pageSlug: string }>
 }): Promise<Metadata> {
-    const { projectSlug, pageSlug } = await params
-    const data = await getPageData(projectSlug, pageSlug)
+    const { username, projectSlug, pageSlug } = await params
+    const data = await getPageData(username, projectSlug, pageSlug)
 
     if (!data) {
         return {
@@ -64,10 +77,10 @@ export async function generateMetadata({
 export default async function PublicPage({
     params,
 }: {
-    params: Promise<{ projectSlug: string; pageSlug: string }>
+    params: Promise<{ username: string; projectSlug: string; pageSlug: string }>
 }) {
-    const { projectSlug, pageSlug } = await params
-    const data = await getPageData(projectSlug, pageSlug)
+    const { username, projectSlug, pageSlug } = await params
+    const data = await getPageData(username, projectSlug, pageSlug)
 
     if (!data) {
         notFound()

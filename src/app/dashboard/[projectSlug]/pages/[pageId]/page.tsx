@@ -40,6 +40,15 @@ export default async function EditorPage({
         .eq('page_id', pageId)
         .order('position', { ascending: true })
 
+    // Fetch User Username (for public link)
+    const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', project.user_id)
+        .single()
+
+    const username = userProfile?.username
+
     // Fetch Default Theme if page has none
     let defaultTheme = null
     if (!(page as any).theme && project.default_theme_id) {
@@ -68,14 +77,16 @@ export default async function EditorPage({
                                 {(page as Page).title}
                             </h1>
                         </div>
-                        <Link
-                            href={`/p/${project.slug}/${page.slug}`}
-                            target="_blank"
-                            className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                        >
-                            <ExternalLink className="h-4 w-4" />
-                            Voir en ligne
-                        </Link>
+                        {username && (
+                            <Link
+                                href={`/p/${username}/${project.slug}/${page.slug}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                            >
+                                <ExternalLink className="h-4 w-4" />
+                                Voir en ligne
+                            </Link>
+                        )}
                     </div>
                 </div>
             </header>

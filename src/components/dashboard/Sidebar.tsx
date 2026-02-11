@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FileText, Palette, Wrench, Settings, Plus, Folder, ChevronDown, LogOut } from 'lucide-react'
+import { FileText, Palette, Wrench, Settings, Plus, Folder, ChevronDown, LogOut, ExternalLink } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { signOut } from '@/app/auth/actions'
 import { CreateProjectModal } from '@/app/dashboard/CreateProjectModal'
@@ -14,9 +14,10 @@ interface SidebarProps {
     projectSlug: string
     projects: Project[]
     currentProject: Project
+    username?: string | null
 }
 
-export function Sidebar({ projectSlug, projects, currentProject }: SidebarProps) {
+export function Sidebar({ projectSlug, projects, currentProject, username }: SidebarProps) {
     const pathname = usePathname()
     const router = useRouter()
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -130,6 +131,21 @@ export function Sidebar({ projectSlug, projects, currentProject }: SidebarProps)
                         </Link>
                     )
                 })}
+
+                {/* Public Link */}
+                {username && (
+                    <a
+                        href={`/p/${username}/${projectSlug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent pl-3 transition-all mt-4"
+                    >
+                        <ExternalLink
+                            className="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500 transition-colors"
+                        />
+                        Voir le site
+                    </a>
+                )}
             </nav>
 
             {/* Footer */}
@@ -138,7 +154,7 @@ export function Sidebar({ projectSlug, projects, currentProject }: SidebarProps)
                     <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shrink-0"></div>
                         <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-medium text-gray-900 truncate">Mon Compte</span>
+                            <span className="text-sm font-medium text-gray-900 truncate">{username || 'Mon Compte'}</span>
                             <span className="text-xs text-gray-500">Plan Gratuit</span>
                         </div>
                     </div>
