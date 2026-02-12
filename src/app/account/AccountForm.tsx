@@ -1,9 +1,9 @@
 'use client'
 
 import { useActionState } from 'react'
-import { updateUsername } from './actions'
+import { updateUsername, type ActionState } from './actions'
 
-const initialState = {
+const initialState: ActionState = {
     error: '',
     success: false
 }
