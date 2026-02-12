@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
+
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
@@ -42,7 +44,21 @@ export default function LoginPage() {
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg ring-1 ring-black/5">
+
+                {/* Toggle Header */}
+                <div className="flex justify-center mb-6">
+                    <div className="bg-gray-100 p-1 rounded-full flex text-sm font-medium">
+                        <span className="px-6 py-2 rounded-full bg-white text-gray-900 shadow-sm">
+                            Connexion
+                        </span>
+                        <Link href="/signup" className="px-6 py-2 rounded-full text-gray-500 hover:text-gray-900 transition-colors">
+                            S'inscrire
+                        </Link>
+                    </div>
+                </div>
+
                 <div className="text-center">
+
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">
                         Connexion
                     </h2>
