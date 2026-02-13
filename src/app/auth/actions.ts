@@ -91,7 +91,7 @@ const normalizeForSlug = (name: string) => {
         .replace(/[^\w-]/g, '');          // Keep only alphanum, _, -
 }
 
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 
 export async function checkUsernameAvailability(username: string): Promise<{ available: boolean; error?: string }> {
     if (!username) return { available: false, error: 'Nom d\'utilisateur requis' }
@@ -228,6 +228,54 @@ export async function signUp(prevState: SignupState, formData: FormData): Promis
         return { error: error.message }
     }
 
+
+    // Set recognized cookie
+    const cookieStore = await cookies()
+    cookieStore.set('recognized', 'true', {
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+    })
+
+
     return { success: true, message: `Un lien de confirmation a été envoyé à ${email}.` }
+}
+
+export async function signIn(prevState: { error?: string }, formData: FormData) {
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    if (!email || !password) {
+        return { error: 'Email et mot de passe requis' }
+    }
+
+    const supabase = await createClient()
+
+    const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    })
+
+    if (error) {
+        if (error.message.includes('Email not confirmed')) {
+            return { error: 'Veuillez confirmer votre adresse e-mail pour accéder à votre dashboard.' }
+        }
+        return { error: 'Identifiants incorrects' }
+    }
+
+    // Set recognized cookie
+    const cookieStore = await cookies()
+    cookieStore.set('recognized', 'true', {
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+    })
+
+    revalidatePath('/', 'layout')
+    redirect('/dashboard')
 }
 

@@ -67,11 +67,15 @@ export async function updateProjectName(projectId: string, newName: string) {
         return { error: 'Le nom du projet ne peut pas être vide' }
     }
 
-    const slug = newName.toLowerCase()
-        .replace(/[^\w\s-]/g, '') // Remove special chars
-        .replace(/\s+/g, '-')     // Replace spaces with hyphens
-        .replace(/--+/g, '-')     // Replace multiple hyphens
+    const slug = newName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Supprime les diacritiques
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '') // Ne garde que l'essentiel
+        .replace(/\s+/g, '-')
         .trim()
+
+    console.log(`Tentative d'update pour ID: ${projectId} vers Slug: ${slug}`)
 
     if (!slug) {
         return { error: 'Le nom génère un slug invalide' }
@@ -82,35 +86,65 @@ export async function updateProjectName(projectId: string, newName: string) {
         .from('projects')
         .select('id')
         .eq('slug', slug)
-        .neq('id', projectId) // Don't block if we keep same slug (though slug derived from name usually changes if name changes)
-        .single()
+        .neq('id', projectId) // Don't block if we keep same slug
+        .maybeSingle()
 
     if (existing) {
-        // Append random suffix if slug taken
-        // Or simply error. Implementation plan said "regenerate slug".
-        // Let's try to append a random string for now or just error.
-        // User request didn't specify handling collisions explicitly other than "regenerate slug".
-        // Let's error for now to keep it clean, or maybe append 4 random chars?
-        // Let's error to let user pick another name if collision.
         return { error: 'Ce nom de projet est déjà pris (slug existant)' }
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('projects')
         .update({ name: newName, slug: slug })
         .eq('id', projectId)
         .eq('user_id', user.id)
+        .select()
 
     if (error) {
         console.error('Update project error:', error)
         return { error: error.message }
     }
 
-    revalidatePath('/dashboard')
-    revalidatePath(`/dashboard/${slug}`) // New path
-    // Old path revalidation is tricky if we don't know the old slug here, but dashboard list will update.
+    if (!data || data.length === 0) {
+        console.error("Aucun projet trouvé avec l'ID:", projectId)
+        return { error: 'Projet introuvable en base ou non autorisé.' }
+    }
+
+    // CRUCIAL : On purge TOUT le cache avant de rediriger
+    revalidatePath('/dashboard', 'layout')
 
     return { success: true, newSlug: slug }
+}
+
+export async function checkProjectNameAvailability(name: string, currentProjectId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { available: false, error: 'Non connecté' }
+
+    if (!name || name.trim().length === 0) return { available: false }
+
+    const slug = name.toLowerCase()
+        .normalize('NFD') // Split accents from letters
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+        .replace(/\s+/g, '-')     // Replace spaces with hyphens
+        .replace(/--+/g, '-')     // Replace multiple hyphens
+        .trim()
+
+    const { data } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('slug', slug)
+        .eq('user_id', user.id)
+        .neq('id', currentProjectId)
+        .single()
+
+    if (data) {
+        return { available: false, error: 'Vous avez déjà un projet portant ce nom.' }
+    }
+
+    return { available: true }
 }
 
 export async function createProject(formData: FormData) {
@@ -676,4 +710,44 @@ export async function applyThemeToProject(projectId: string, themeId: string) {
     revalidatePath(`/dashboard/${projectId}`)
     revalidatePath(`/p/[username]/[projectSlug]`, 'layout') // Revalidate public pages potentially
     return { success: true }
+}
+
+export async function updateProjectContent(projectId: string, pageId: string, blocks: Block[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: 'Unauthorized' }
+
+    // Verify ownership
+    const { data: project } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('id', projectId)
+        .eq('user_id', user.id)
+        .single()
+
+    if (!project) return { error: 'Unauthorized' }
+
+    try {
+        const updates = blocks.map(b => ({
+            id: b.id,
+            page_id: pageId,
+            type: b.type,
+            content: b.content,
+            position: b.position
+            // is_visible: b.is_visible // Column missing in DB, disabled for now
+        }))
+
+        const { error } = await supabase
+            .from('blocks')
+            .upsert(updates, { onConflict: 'id' })
+
+        if (error) throw error
+
+        revalidatePath(`/dashboard/${projectId}/${pageId}`)
+        return { success: true }
+    } catch (error: any) {
+        console.error('Failed to update project content:', error)
+        return { error: error.message }
+    }
 }

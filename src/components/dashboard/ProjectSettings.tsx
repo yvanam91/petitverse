@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateProjectName, deleteProject } from '@/app/dashboard/actions'
+import { updateProjectName, deleteProject, checkProjectNameAvailability } from '@/app/dashboard/actions'
 import { toast } from 'sonner'
 import { AlertTriangle, Trash2, Loader2, Save } from 'lucide-react'
 import { Project } from '@/types/database'
@@ -19,25 +19,71 @@ export function ProjectSettings({ project }: ProjectSettingsProps) {
     const [deleteConfirm, setDeleteConfirm] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
 
+
+    const [nameError, setNameError] = useState('')
+
+    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value
+
+        // Slugification: Replace spaces with dashes immediately
+        val = val.replace(/\s+/g, '-')
+
+        // Validation Regex: Alphanumeric, accents, dashes
+        // const regex = /^[a-zA-Z0-9À-ÿ-]*$/
+        // User requested: "n'autorise que l'alphanumérique, les accents, les tirets et les espaces"
+        // But since we replace spaces with dashes, we basically allow dashes instead of spaces.
+        // We will filter out anything that is NOT alphanumeric, accent, or dash.
+        if (!/^[a-zA-Z0-9À-ÿ-]*$/.test(val)) {
+            return // Ignore invalid characters
+        }
+
+        setName(val)
+        setNameError('')
+    }
+
     async function handleRename(e: React.FormEvent) {
         e.preventDefault()
+
+        if (!project?.id) {
+            toast.error('ID Projet manquant')
+            return
+        }
+
+        if (name.trim() === '') {
+            toast.error('Le nom ne peut pas être vide')
+            return
+        }
+
         setIsRenaming(true)
+        setNameError('')
+
         try {
+            // 1. Check Availability
+            const availability = await checkProjectNameAvailability(name, project.id)
+            if (!availability.available) {
+                const err = availability.error || 'Nom non disponible'
+                setNameError(err)
+                toast.error(err)
+                setIsRenaming(false)
+                return
+            }
+
+            // 2. Update
             const result = await updateProjectName(project.id, name)
-            if (result.error) {
+
+            if (result && 'error' in result && result.error) {
                 toast.error(result.error)
-            } else {
-                toast.success('Nom du projet mis à jour')
-                if (result.newSlug) {
-                    // Redirect to new slug URL
-                    router.push(`/dashboard/${result.newSlug}/settings`)
-                } else {
-                    router.refresh()
-                }
+            } else if (result && 'newSlug' in result) {
+                toast.success('Redirection en cours...')
+                // Force hard reload to clear layout cache and prevent bounce back
+                window.location.assign(`/dashboard/${result.newSlug}/settings`)
             }
         } catch (error) {
             toast.error('Une erreur est survenue lors de la modification')
         } finally {
+            // Only stop loading if we didn't redirect (otherwise component unmounts)
+            // But checking 'newSlug' implies redirect starts immediately.
+            // Leaving setIsRenaming(false) is fine as safety.
             setIsRenaming(false)
         }
     }
@@ -74,8 +120,8 @@ export function ProjectSettings({ project }: ProjectSettingsProps) {
                             <input
                                 type="text"
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2"
+                                onChange={handleNameChange}
+                                className={`flex-1 rounded-md border shadow-sm focus:ring-indigo-500 sm:text-sm p-2 ${nameError ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-indigo-500'}`}
                                 placeholder="Nom du projet"
                             />
                             <button
@@ -91,6 +137,12 @@ export function ProjectSettings({ project }: ProjectSettingsProps) {
                                 {isRenaming ? 'Enregistrement...' : 'Enregistrer'}
                             </button>
                         </div>
+                        {nameError && (
+                            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                {nameError}
+                            </p>
+                        )}
                     </form>
                 </div>
             </div>

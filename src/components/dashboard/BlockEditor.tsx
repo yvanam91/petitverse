@@ -21,7 +21,7 @@ import {
     useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { addBlockWithProject, updateBlock, deleteBlock, updatePageConfig, addBlockWithContent, updateBlockPositions } from '@/app/dashboard/actions'
+import { addBlockWithProject, updateBlock, deleteBlock, updatePageConfig, addBlockWithContent, updateBlockPositions, updateProjectContent } from '@/app/dashboard/actions'
 import { Plus, GripVertical, Trash2, Save, Eye, EyeOff, LayoutTemplate, Type, Heading, Minus, Image as ImageIcon, Twitter, Upload, Loader2, Globe, Settings2, FileText, AlignLeft, AlignCenter, AlignRight, Columns, Instagram, Facebook, Linkedin, Github } from 'lucide-react'
 import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
 import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
@@ -280,8 +280,8 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Titre</label>
                 <input
                     type="text"
-                    value={(isEditing ? editState.title : block.content.title) || ''}
-                    onChange={(e) => onEditChange('title', e.target.value)}
+                    value={block.content.title || ''}
+                    onChange={(e) => onUpdateContent({ ...block.content, title: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border font-bold text-lg"
                     placeholder="Grand Titre"
                 />
@@ -488,7 +488,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                     <span className="inline-flex items-center rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 uppercase">
                         {block.type.replace('_', ' ')}
                     </span>
-                    {!block.is_visible && (
+                    {block.is_visible === false && (
                         <span className="inline-flex items-center rounded-sm bg-yellow-50 px-1.5 py-0.5 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
                             Masqué
                         </span>
@@ -543,8 +543,12 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
 
 export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, initialPublishedState, initialMetaTitle, initialTheme }: BlockEditorProps) {
     const [activeTab, setActiveTab] = useState<'content' | 'settings'>('content')
-    // Ensure positions are sorted initially if they weren't
-    const [blocks, setBlocks] = useState<Block[]>(initialBlocks.sort((a, b) => a.position - b.position))
+    // Ensure positions are sorted and visibility is synced from content
+    const [blocks, setBlocks] = useState<Block[]>(initialBlocks.sort((a, b) => a.position - b.position).map(b => ({
+        ...b,
+        // Sync visibility from content if available (migration/compatibility)
+        is_visible: b.content?.is_visible !== undefined ? b.content.is_visible : b.is_visible
+    })))
     // FIX: Do NOT merge with default config on init, keep exactly what DB has (even if empty) to allow theme inheritance
     // But UI needs defaults to render controls properly? We'll handle defaults in render/accessors.
     const [config, setConfig] = useState<PageConfig>(initialConfig || {})
@@ -639,30 +643,57 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
         }
     }
 
-    const handleUpdateContent = async (blockId: string, newContent: any) => {
-        // Optimistic update
-        setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, content: newContent } : b))
+    const [isSavingContent, setIsSavingContent] = useState(false)
 
-        // Debounce needed ideally, but for now direct update
-        // We'll skip loading state for cleaner UI on small edits like text
-        await updateBlock(projectId, pageId, blockId, newContent)
+    const handleUpdateContent = (blockId: string, newContent: any) => {
+        // Local state update only (for preview)
+        setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, content: newContent } : b))
+    }
+
+    const handleSaveAllContent = async () => {
+        setIsSavingContent(true)
+        try {
+            // Sanitize payload to strip undefined values (Next.js Server Actions hate undefined)
+            const sanitizedBlocks = JSON.parse(JSON.stringify(blocks))
+            const result = await updateProjectContent(projectId, pageId, sanitizedBlocks)
+
+            if (result?.error) {
+                console.error('Server Action Error:', result.error)
+                toast.error(`Erreur: ${result.error}`)
+            } else {
+                toast.success('Contenu sauvegardé avec succès')
+            }
+        } catch (error) {
+            console.error('Failed to save content (Client Catch):', error)
+            toast.error('Erreur inattendue lors de la sauvegarde')
+        } finally {
+            setIsSavingContent(false)
+        }
     }
 
     const handleToggleVisibility = async (blockId: string) => {
         const block = blocks.find(b => b.id === blockId)
         if (!block) return
 
-        const newVisibility = block.is_visible === false ? true : false // default is true (undefined)
+        // Use content.is_visible as source of truth since column is missing
+        const currentVisibility = block.content.is_visible !== false // Default true
+        const newVisibility = !currentVisibility
 
-        setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, is_visible: newVisibility } : b))
+        // Optimistic update: Update both top-level (for UI compatibility) and content (for persistence)
+        setBlocks(prev => prev.map(b => b.id === blockId ? {
+            ...b,
+            is_visible: newVisibility,
+            content: { ...b.content, is_visible: newVisibility }
+        } : b))
 
-        const supabase = createClient()
-        const { error } = await supabase.from('blocks').update({ is_visible: newVisibility }).eq('id', blockId)
-
-        if (error) {
-            toast.error('Erreur mise à jour visibilité')
-        } else {
+        try {
+            // Persist inside content JSONB
+            await updateBlock(projectId, pageId, blockId, { ...block.content, is_visible: newVisibility })
             toast.success(newVisibility ? 'Bloc visible' : 'Bloc masqué')
+        } catch (error) {
+            console.error('Failed to toggle visibility', error)
+            toast.error('Erreur mise à jour visibilité')
+            // Revert optimistic update? For now, we trust it works or user will reload.
         }
     }
 
@@ -1017,6 +1048,18 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                                 </DragOverlay>
                             </DndContext>
                         </ClientOnly>
+
+                        {/* Global Save Button */}
+                        <div className="pt-4 border-t border-gray-200">
+                            <button
+                                onClick={handleSaveAllContent}
+                                disabled={isSavingContent}
+                                className="w-full flex justify-center items-center gap-2 bg-indigo-600 text-white p-3 rounded-md hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors"
+                            >
+                                {isSavingContent ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+                                Confirmer les changements
+                            </button>
+                        </div>
                     </div>
                 )}
 

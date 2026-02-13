@@ -19,13 +19,7 @@ export default async function DashboardLayout({
     ])
 
     if (!currentProject) {
-        // If project doesn't exist, maybe redirect to dashboard root or 404
-        // check if user has any project
-        if (projects.length > 0) {
-            redirect(`/dashboard/${projects[0].slug}/pages`)
-        } else {
-            redirect('/dashboard') // Back to empty state
-        }
+        notFound()
     }
 
     // Security check: getProjects already filters by user_id via supabase RLS/query

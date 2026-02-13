@@ -1,50 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useActionState } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/utils/supabase/client'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { signIn } from '../auth/actions'
 
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const router = useRouter()
-    const supabase = createClient()
-
-    const handleSignIn = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        setError(null)
-
-        try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            })
-
-            if (error) {
-                if (error.message.includes('Email not confirmed')) {
-                    setError('Veuillez confirmer votre adresse e-mail pour accéder à votre dashboard.')
-                } else {
-                    setError('Identifiants incorrects')
-                }
-                return
-            }
-
-
-            router.push('/dashboard')
-            router.refresh()
-        } catch (err) {
-            setError('Une erreur inattendue est survenue')
-        } finally {
-            setLoading(false)
-        }
-    }
+    const [state, formAction, isPending] = useActionState(signIn, { error: '' })
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -72,7 +36,7 @@ export default function LoginPage() {
                     </p>
                 </div>
 
-                <form className="mt-8 space-y-6" onSubmit={handleSignIn}>
+                <form className="mt-8 space-y-6" action={formAction}>
                     <div className="space-y-4">
                         <div>
                             <label
@@ -88,8 +52,6 @@ export default function LoginPage() {
                                     type="email"
                                     autoComplete="email"
                                     required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
                                     className="block w-full rounded-md border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 pl-4"
                                     placeholder="exemple@email.com"
                                 />
@@ -110,8 +72,6 @@ export default function LoginPage() {
                                     type={showPassword ? 'text' : 'password'}
                                     autoComplete="current-password"
                                     required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
                                     className="block w-full rounded-md border-0 py-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 pl-4 pr-10"
                                     placeholder="••••••••"
                                 />
@@ -130,11 +90,11 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {error && (
+                    {state?.error && (
                         <div className="rounded-md bg-red-50 p-4">
                             <div className="flex">
                                 <div className="text-sm text-red-700">
-                                    {error}
+                                    {state.error}
                                 </div>
                             </div>
                         </div>
@@ -143,10 +103,10 @@ export default function LoginPage() {
                     <div>
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={isPending}
                             className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                         >
-                            {loading ? (
+                            {isPending ? (
                                 <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
                                 'Se connecter'
