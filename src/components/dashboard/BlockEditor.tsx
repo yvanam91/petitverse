@@ -31,6 +31,7 @@ import type { Block, PageConfig } from '@/types/database'
 import { createClient } from '@/utils/supabase/client'
 import ClientOnly from '@/components/ClientOnly'
 import { toast } from 'sonner'
+import { ComponentPicker } from './ComponentPicker'
 
 interface BlockEditorProps {
     projectId: string
@@ -556,6 +557,7 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
     const [edits, setEdits] = useState<Record<string, { title: string; url: string; loading: boolean }>>({})
     const [deleting, setDeleting] = useState<Record<string, boolean>>({})
     const [savingSettings, setSavingSettings] = useState(false)
+    const [isPickerOpen, setIsPickerOpen] = useState(false)
 
 
 
@@ -880,11 +882,6 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
             <div key={previewKey} className="h-[600px] w-full max-w-[375px] mx-auto overflow-y-auto border-8 border-gray-800 rounded-[3rem] shadow-2xl transition-colors duration-200 relative overflow-hidden scrollbar-hide" style={containerStyle}>
 
                 {/* Debug Theme Name */}
-                {initialTheme && (
-                    <div className="absolute top-0 left-0 right-0 bg-yellow-300 text-xs text-black p-1 z-[100] text-center opacity-80">
-                        Theme: {initialTheme.name} (Debug)
-                    </div>
-                )}
 
                 {/* Header Background */}
                 {headerBg && (
@@ -964,41 +961,18 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
 
                 {activeTab === 'content' && (
                     <div className="space-y-6">
-                        {/* Add Buttons */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} accept="image/*,application/pdf" />
-                            <button onClick={() => handleAddBlock('link')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <Plus className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">Lien</span>
-                            </button>
-                            <button onClick={() => handleAddBlock('header')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <LayoutTemplate className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">En-tête</span>
-                            </button>
-                            <button onClick={() => handleAddBlock('social_grid')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <Twitter className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">Réseaux</span>
-                            </button>
-                            <button onClick={() => handleAddBlock('separator')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <Minus className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">Séparateur</span>
-                            </button>
+                        {/* Add Button */}
+                        <button
+                            onClick={() => setIsPickerOpen(true)}
+                            className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all group"
+                        >
+                            <div className="h-8 w-8 rounded-full bg-gray-100 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
+                                <Plus className="h-5 w-5" />
+                            </div>
+                            <span className="font-medium">Ajouter un composant</span>
+                        </button>
 
-                            <button onClick={() => handleAddBlock('title')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <Heading className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">Titre</span>
-                            </button>
-                            <button onClick={() => handleAddBlock('text')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <Type className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">Texte</span>
-                            </button>
-                            <button onClick={() => handleAddBlock('hero')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <ImageIcon className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">Hero</span>
-                            </button>
-                            <button onClick={() => handleAddBlock('double-link')} disabled={loadingAdd} className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 bg-white transition-colors">
-                                <Columns className="h-5 w-5 text-indigo-600" /> <span className="text-xs font-medium text-gray-700">2 Liens</span>
-                            </button>
-
-                            <button onClick={() => fileInputRef.current?.click()} disabled={loadingAdd} className="md:col-span-1 flex flex-col items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 transition-colors text-gray-500 hover:text-indigo-600 bg-white">
-                                <Upload className="h-5 w-5" /> <span className="text-xs font-medium text-center">Fichier / Img</span>
-                            </button>
-                        </div>
-
-                        {/* DnD List */}
+                        {/* Components List */}
                         <ClientOnly>
                             <DndContext
                                 id="block-editor-dnd-context"
@@ -1132,6 +1106,14 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                     {renderPreview()}
                 </div>
             </div>
+            <ComponentPicker
+                isOpen={isPickerOpen}
+                onClose={() => setIsPickerOpen(false)}
+                onSelect={(type) => {
+                    handleAddBlock(type as any)
+                    setIsPickerOpen(false)
+                }}
+            />
         </div>
     )
 }

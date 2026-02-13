@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FileText, Palette, Wrench, Settings, Plus, Folder, ChevronDown, LogOut, ExternalLink } from 'lucide-react'
+import { FileText, Palette, Wrench, Settings, Plus, Folder, ChevronDown, LogOut, ExternalLink, ChartColumn } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { signOut } from '@/app/auth/actions'
 import { CreateProjectModal } from '@/app/dashboard/CreateProjectModal'
@@ -17,7 +17,7 @@ interface SidebarProps {
     username?: string | null
 }
 
-export function Sidebar({ projectSlug, projects, currentProject, username }: SidebarProps) {
+export function Sidebar({ projectSlug, projects, currentProject, username, className = "" }: SidebarProps & { className?: string }) {
     const pathname = usePathname()
     const router = useRouter()
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -36,6 +36,7 @@ export function Sidebar({ projectSlug, projects, currentProject, username }: Sid
     }, [])
 
     const navigation = [
+        { name: 'Dashboard', href: `/dashboard/${projectSlug}`, icon: ChartColumn, exact: true },
         { name: 'Pages', href: `/dashboard/${projectSlug}/pages`, icon: FileText },
         { name: 'Thèmes', href: `/dashboard/${projectSlug}/themes`, icon: Palette },
         { name: 'Outils', href: `/dashboard/${projectSlug}/tools`, icon: Wrench },
@@ -43,7 +44,7 @@ export function Sidebar({ projectSlug, projects, currentProject, username }: Sid
     ]
 
     return (
-        <div className="flex flex-col h-full bg-white border-r border-gray-100 w-64">
+        <div className={`flex flex-col h-full bg-white border-r border-gray-100 w-64 ${className}`}>
             {/* Header / Project Selector */}
             <div className="p-4 border-b border-gray-100 relative">
                 <div ref={dropdownRef}>
@@ -108,7 +109,7 @@ export function Sidebar({ projectSlug, projects, currentProject, username }: Sid
             {/* Navigation */}
             <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
                 {navigation.map((item) => {
-                    const isActive = pathname.startsWith(item.href)
+                    const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href)
                     return (
                         <Link
                             key={item.name}
@@ -133,31 +134,18 @@ export function Sidebar({ projectSlug, projects, currentProject, username }: Sid
                 })}
 
                 {/* Public Link */}
-                {username && (
-                    <a
-                        href={`/p/${username}/${projectSlug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent pl-3 transition-all mt-4"
-                    >
-                        <ExternalLink
-                            className="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500 transition-colors"
-                        />
-                        Voir le site
-                    </a>
-                )}
             </nav>
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-100">
                 <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-3">
+                    <Link href="/dashboard/account" className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 -ml-2 transition-colors flex-1 min-w-0 mr-2">
                         <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 shrink-0"></div>
-                        <div className="flex flex-col min-w-0">
+                        <div className="flex flex-col min-w-0 text-left">
                             <span className="text-sm font-medium text-gray-900 truncate">{username || 'Mon Compte'}</span>
                             <span className="text-xs text-gray-500">Plan Gratuit</span>
                         </div>
-                    </div>
+                    </Link>
                     <form action={signOut}>
                         <button
                             type="submit"
@@ -169,6 +157,7 @@ export function Sidebar({ projectSlug, projects, currentProject, username }: Sid
                     </form>
                 </div>
             </div>
+
 
             <CreateProjectModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} />
         </div>

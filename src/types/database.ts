@@ -3,7 +3,9 @@ export type Profile = {
     created_at: string
     email: string
     username: string | null
+    full_name: string | null
 }
+
 
 export type BlockType = 'text' | 'image' | 'video' | 'button' | 'hero' | 'link' | 'double-link' | 'file' | 'header' | 'social_grid' | 'separator' | 'title'
 

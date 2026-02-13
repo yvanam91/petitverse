@@ -28,9 +28,14 @@ export default function LoginPage() {
             })
 
             if (error) {
-                setError(error.message)
+                if (error.message.includes('Email not confirmed')) {
+                    setError('Veuillez confirmer votre adresse e-mail pour accéder à votre dashboard.')
+                } else {
+                    setError('Identifiants incorrects')
+                }
                 return
             }
+
 
             router.push('/dashboard')
             router.refresh()

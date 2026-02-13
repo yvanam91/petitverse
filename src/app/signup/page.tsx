@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Loader2, Check, X } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Check, X, Mail } from 'lucide-react' // Added Mail icon
 import { toast } from 'sonner'
-import { checkUsernameAvailability, checkEmailAvailability, signup } from './actions'
+import { checkUsernameAvailability, checkEmailAvailability, signUp } from '../auth/actions' // Updated import
 
 const normalizeForSlug = (name: string) => {
+    return name
+
 
     return name
         .toLowerCase()
@@ -100,11 +102,22 @@ export default function SignupPage() {
             return
         }
 
-        const formData = new FormData(e.currentTarget)
-        // Overwrite the raw username with the normalized one for submission
-        formData.set('username', normalizedUsername)
+        if (!isEmailValid) {
+            // If user submits without blurring, trigger check
+            const result = await checkEmailAvailability(email)
+            if (!result.available) {
+                setEmailError(result.error || 'Email non disponible')
+                toast.error(result.error || 'Email invalide')
+                setLoading(false)
+                return
+            }
+        }
 
-        const result = await signup({}, formData)
+        const formData = new FormData(e.currentTarget)
+        // We do NOT overwrite 'username' here because we want to send the raw input to the server
+        // The server will normalize it for the slug and keep the raw one for display_name
+
+        const result = await signUp({}, formData)
 
         if (result.error) {
             toast.error(result.error)
@@ -112,10 +125,8 @@ export default function SignupPage() {
         } else if (result.success) {
             setSignupSuccess(true)
             toast.success('Inscription réussie !')
-            // Delay redirect slightly for UX
-            setTimeout(() => {
-                router.push('/login')
-            }, 5000)
+            // Delay redirect removed or kept? User requested "Bouton : 'Retour à la connexion'".
+            // So we stay on specific success screen.
         }
     }
 
@@ -123,16 +134,18 @@ export default function SignupPage() {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
                 <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg ring-1 ring-black/5 text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                        <Check className="h-6 w-6 text-green-600" aria-hidden="true" />
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100">
+                        <Mail className="h-8 w-8 text-indigo-600" aria-hidden="true" />
                     </div>
-                    <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">Vérifiez vos emails</h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Un lien de confirmation a été envoyé à <strong>{email}</strong>.<br />
-                        Veuillez cliquer dessus pour activer votre compte.
+                    <h2 className="mt-6 text-2xl font-bold tracking-tight text-gray-900">Vérifiez vos emails</h2>
+                    <p className="mt-4 text-base text-gray-600">
+                        Un lien de confirmation a été envoyé à <strong className="text-gray-900">{email}</strong>.
                     </p>
-                    <div className="mt-6">
-                        <Link href="/login" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+                    <div className="mt-8">
+                        <Link
+                            href="/login"
+                            className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
+                        >
                             Retour à la connexion
                         </Link>
                     </div>
@@ -140,6 +153,7 @@ export default function SignupPage() {
             </div>
         )
     }
+
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">

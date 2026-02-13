@@ -2,6 +2,7 @@ import { Sidebar } from '@/components/dashboard/Sidebar'
 import { getProjects, getProjectBySlug } from '@/app/dashboard/actions'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import { MobileNav } from '@/components/dashboard/MobileNav'
 
 export default async function DashboardLayout({
     children,
@@ -41,13 +42,24 @@ export default async function DashboardLayout({
 
     return (
         <div className="flex h-screen bg-gray-50">
+            {/* Desktop Sidebar - Hidden on mobile */}
             <Sidebar
+                className="hidden md:flex"
                 projectSlug={projectSlug}
                 projects={projects as any[]}
                 currentProject={currentProject as any}
                 username={username}
             />
-            <main className="flex-1 overflow-y-auto">
+
+            {/* Mobile Navigation - Visible only on mobile */}
+            <MobileNav
+                projectSlug={projectSlug}
+                projects={projects as any[]}
+                currentProject={currentProject as any}
+                username={username}
+            />
+
+            <main className="flex-1 overflow-y-auto w-full">
                 {children}
             </main>
         </div>

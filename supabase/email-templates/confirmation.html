@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmez votre adresse e-mail</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #F9FAFB;
+      color: #111827;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: #F9FAFB;
+      padding: 40px 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    .header {
+      padding: 24px;
+      text-align: center;
+      border-bottom: 1px solid #E5E7EB;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.025em;
+    }
+    .content {
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .message {
+      font-size: 16px;
+      line-height: 24px;
+      color: #374151;
+      margin-bottom: 24px;
+    }
+    .button-container {
+      margin: 32px 0;
+    }
+    .button {
+      display: inline-block;
+      background-color: #7C3AED;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+    .button:hover {
+      background-color: #6D28D9;
+    }
+    .footer {
+      padding: 24px;
+      background-color: #F9FAFB;
+      text-align: center;
+      font-size: 12px;
+      color: #6B7280;
+      border-top: 1px solid #E5E7EB;
+    }
+    @media only screen and (max-width: 600px) {
+      .container {
+        width: 100% !important;
+        border-radius: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td align="center">
+          <div class="container">
+            <!-- Header -->
+            <div class="header">
+              <h1>Picoverse</h1>
+            </div>
+            
+            <!-- Content -->
+            <div class="content">
+              <p class="message">
+                Bienvenue sur Picoverse !<br>
+                Vous êtes à un clic de créer votre première page.
+              </p>
+              
+              <div class="button-container">
+                <a href="{{ .ConfirmationURL }}" class="button" target="_blank">
+                  Confirmer mon adresse e-mail
+                </a>
+              </div>
+              
+              <p class="message" style="font-size: 14px; color: #6B7280;">
+                Ce lien expirera dans 24 heures.
+              </p>
+            </div>
+            
+            <!-- Footer -->
+            <div class="footer">
+              <p style="margin: 0;">
+                Si vous n'avez pas créé de compte, vous pouvez ignorer cet e-mail.
+              </p>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

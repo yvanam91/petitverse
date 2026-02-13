@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import type { Block, PageConfig, Project, BlockType, Theme, Page } from '@/types/database'
 
 export async function deleteProject(projectId: string) {
     console.log('--- Attempting to delete project:', projectId)
@@ -162,7 +163,7 @@ export async function createProject(formData: FormData) {
     revalidatePath('/dashboard')
 
     // 3. Create Default Theme automatically
-    const defaultThemeConfig = {
+    const defaultThemeConfig: PageConfig = {
         colors: {
             background: '#ffffff',
             primary: '#000000',
@@ -325,9 +326,8 @@ export async function addBlockWithProject(projectId: string, pageId: string) {
     return { data }
 }
 
-import type { Block, PageConfig, Project, BlockType } from '@/types/database'
 
-export async function addBlockWithContent(projectId: string, pageId: string, type: BlockType, content: any) {
+export async function addBlockWithContent(projectId: string, pageId: string, type: BlockType, content: Record<string, any>) {
     const supabase = await createClient()
 
     // Get current max position to append
@@ -356,7 +356,7 @@ export async function addBlockWithContent(projectId: string, pageId: string, typ
 }
 
 
-export async function updateBlock(projectId: string, pageId: string, blockId: string, content: any) {
+export async function updateBlock(projectId: string, pageId: string, blockId: string, content: Record<string, any>) {
     const supabase = await createClient()
 
     const { error } = await supabase
@@ -388,7 +388,7 @@ export async function deleteBlock(projectId: string, pageId: string, blockId: st
     return { error: null }
 }
 
-export async function updatePageConfig(projectId: string, pageId: string, config: any) {
+export async function updatePageConfig(projectId: string, pageId: string, config: PageConfig) {
     const supabase = await createClient()
 
     const { error } = await supabase
@@ -406,7 +406,7 @@ export async function updatePageConfig(projectId: string, pageId: string, config
     return { error: null }
 }
 
-export async function updateBlockPositions(projectId: string, pageId: string, updates: { id: string, position: number, page_id: string, type: string, content: any }[]) {
+export async function updateBlockPositions(projectId: string, pageId: string, updates: { id: string, position: number, page_id: string, type: string, content: Record<string, any> }[]) {
     console.log('--- Start updateBlockPositions ---')
     console.log('Update pour projet:', projectId, 'page:', pageId, 'updates count:', updates.length)
 
@@ -446,7 +446,7 @@ export async function updateBlockPositions(projectId: string, pageId: string, up
             id: u.id,
             position: u.position,
             page_id: pageId, // Should match u.page_id, verifying or overriding with validated pageId is safer
-            type: u.type,
+            type: u.type as BlockType,
             content: u.content
             // updated_at: new Date().toISOString() // Optional
         }))
@@ -515,7 +515,7 @@ export async function saveTheme(name: string, config: PageConfig, projectId: str
     return { success: true, theme: data }
 }
 
-export async function getThemes(projectId: string) {
+export async function getThemes(projectId: string): Promise<Theme[]> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -532,7 +532,7 @@ export async function getThemes(projectId: string) {
         return []
     }
 
-    return data
+    return data as Theme[]
 }
 
 export async function saveDefaultTheme(config: PageConfig) {
@@ -542,7 +542,7 @@ export async function saveDefaultTheme(config: PageConfig) {
     return { success: true }
 }
 
-export async function getProjects() {
+export async function getProjects(): Promise<Project[]> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
@@ -553,10 +553,10 @@ export async function getProjects() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-    return projects || []
+    return (projects as Project[]) || []
 }
 
-export async function getProjectBySlug(slug: string) {
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
@@ -568,7 +568,7 @@ export async function getProjectBySlug(slug: string) {
         .eq('user_id', user.id)
         .single()
 
-    return project
+    return project as Project
 }
 
 export async function deletePage(projectId: string, pageId: string) {

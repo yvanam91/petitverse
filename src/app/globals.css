@@ -1,8 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Couleurs de marque */
+  --primary: #6A58A9;
+  /* Le violet Picoverse */
+  --primary-foreground: #A997DF;
+
+  --background: #FCFAFF;
+  --foreground: #252B37;
+
+  /* Typographie */
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Arrondis */
+  --radius: 0.75rem;
 }
 
 @theme inline {
@@ -23,4 +35,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+
+  input,
+  textarea,
+  select {
+    color: var(--foreground);
+  }
 }
