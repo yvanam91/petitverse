@@ -7,7 +7,7 @@ export type Profile = {
 }
 
 
-export type BlockType = 'text' | 'image' | 'video' | 'button' | 'hero' | 'link' | 'double-link' | 'file' | 'header' | 'social_grid' | 'separator' | 'title'
+export type BlockType = 'text' | 'image' | 'video' | 'button' | 'hero' | 'link' | 'double-link' | 'file' | 'header' | 'social_grid' | 'separator' | 'title' | 'embed'
 
 export interface Block {
     id: string
@@ -53,6 +53,10 @@ export interface PageConfig {
         width: string
         color: string
     }
+    shadows?: {
+        style: 'none' | 'hard' | 'soft'
+        opacity: number // de 0 à 1
+    }
     [key: string]: any
 }
 
@@ -69,6 +73,7 @@ export type Page = {
     id: string
     created_at: string
     project_id: string
+    theme_id?: string | null
     title: string
     slug: string
     description?: string

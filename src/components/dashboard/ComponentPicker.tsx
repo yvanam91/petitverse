@@ -20,6 +20,7 @@ export function ComponentPicker({ isOpen, onClose, onSelect }: ComponentPickerPr
         { id: 'separator', label: 'Séparateur', icon: Minus, description: 'Ligne de séparation' },
         { id: 'double-link', label: '2 Liens', icon: Columns, description: 'Liens côte à côte' },
         { id: 'hero', label: 'Hero', icon: ImageIcon, description: 'Grande image avec texte' },
+        { id: 'embed', label: 'Média / Intégration', icon: ImageIcon, description: 'YouTube, Spotify, etc.' },
         // { id: 'file', label: 'Fichier', icon: FileText, description: 'Fichier à télécharger' }, // Usually triggers upload directly
     ]
 

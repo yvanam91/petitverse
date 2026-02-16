@@ -23,11 +23,14 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { addBlockWithProject, updateBlock, deleteBlock, updatePageConfig, addBlockWithContent, updateBlockPositions, updateProjectContent } from '@/app/dashboard/actions'
 import { Plus, GripVertical, Trash2, Save, Eye, EyeOff, LayoutTemplate, Type, Heading, Minus, Image as ImageIcon, Twitter, Upload, Loader2, Globe, Settings2, FileText, AlignLeft, AlignCenter, AlignRight, Columns, Instagram, Facebook, Linkedin, Github } from 'lucide-react'
+import { getBoxShadow } from '@/lib/utils'
 import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
 import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
 import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
 import { DoubleLinkBlock } from '@/components/shared/blocks/DoubleLinkBlock'
+import { EmbedBlock } from '@/components/shared/blocks/EmbedBlock'
 import type { Block, PageConfig } from '@/types/database'
+import { getEmbedUrl } from '@/lib/embed-utils'
 import { createClient } from '@/utils/supabase/client'
 import ClientOnly from '@/components/ClientOnly'
 import { toast } from 'sonner'
@@ -422,21 +425,86 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
         const isFile = block.type === 'file' || block.type === 'image'
         if (isFile) {
             return (
-                <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <div className="h-10 w-10 bg-white rounded flex items-center justify-center border border-gray-200 overflow-hidden">
-                        {block.type === 'image' ? (
-                            <img src={block.content.url} alt="" className="h-full w-full object-cover" />
+                <div className="space-y-3">
+                    {/* Preview / Upload Area */}
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 hover:bg-gray-50 transition-colors relative group/image">
+                        {block.content?.url ? (
+                            <div className="relative w-full h-48">
+                                {block.type === 'image' ? (
+                                    <img src={block.content.url} alt="Preview" className="w-full h-full object-contain rounded-md" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-md">
+                                        <FileText className="h-16 w-16 text-gray-400" />
+                                        <span className="mt-2 block text-sm font-medium text-gray-600">{block.content.title || 'Fichier'}</span>
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity rounded-md">
+                                    <span className="text-white text-sm font-medium">Changer de fichier</span>
+                                </div>
+                            </div>
                         ) : (
-                            <FileText className="h-5 w-5 text-gray-500" />
+                            <div className="text-center">
+                                {block.type === 'image' ? <ImageIcon className="mx-auto h-12 w-12 text-gray-300" /> : <FileText className="mx-auto h-12 w-12 text-gray-300" />}
+                                <span className="mt-2 block text-sm font-medium text-gray-600">
+                                    {block.type === 'image' ? 'Ajouter une image' : 'Ajouter un fichier'}
+                                </span>
+                            </div>
                         )}
+                        <input
+                            type="file"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            accept={block.type === 'image' ? "image/*" : "*"}
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0]
+                                if (!file) return
+
+                                // Validation
+                                const maxSize = 50 * 1024 * 1024 // 50MB
+                                if (file.size > maxSize) {
+                                    toast.error('Le fichier est trop volumineux (max 50 Mo)')
+                                    return
+                                }
+
+                                try {
+                                    const supabase = createClient()
+                                    const { data: { user } } = await supabase.auth.getUser()
+                                    if (!user) return
+
+                                    // Upload to 'uploads' bucket
+                                    const fileExt = file.name.split('.').pop()
+                                    const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+                                    const filePath = `${user.id}/${fileName}`
+
+                                    const { error } = await supabase.storage.from('uploads').upload(filePath, file)
+                                    if (error) throw error
+
+                                    const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(filePath)
+
+                                    // Update content
+                                    onUpdateContent({
+                                        ...block.content,
+                                        url: publicUrl,
+                                        title: file.name // Auto-set title from filename
+                                    })
+                                    toast.success('Fichier téléchargé')
+                                } catch (err) {
+                                    console.error(err)
+                                    toast.error('Erreur lors du téléchargement')
+                                }
+                            }}
+                        />
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                            {block.content.title}
-                        </p>
-                        <a href={block.content.url} target="_blank" className="text-xs text-indigo-600 hover:underline truncate block">
-                            {block.content.url}
-                        </a>
+
+                    {/* Meta Fields */}
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Titre / Légende</label>
+                        <input
+                            type="text"
+                            value={block.content.title || ''}
+                            onChange={(e) => onUpdateContent({ ...block.content, title: e.target.value })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                            placeholder={block.type === 'image' ? "Légende de l'image" : "Nom du fichier"}
+                        />
                     </div>
                 </div>
             )
@@ -504,7 +572,8 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                 {block.type === 'text' && renderTextBlock()}
                 {block.type === 'hero' && renderHeroBlock()}
                 {block.type === 'double-link' && renderDoubleLinkBlock()}
-                {['link', 'file', 'image'].includes(block.type) && renderStandardContent()}
+                {block.type === 'double-link' && renderDoubleLinkBlock()}
+                {['link', 'file', 'image', 'embed'].includes(block.type) && renderStandardContent()}
             </div>
 
             <div className="flex flex-col items-end gap-2">
@@ -525,7 +594,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                     {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 </button>
 
-                {isEditing && ['link'].includes(block.type) && (
+                {isEditing && ['link', 'embed'].includes(block.type) && (
                     <button
                         onClick={onSave}
                         disabled={editState.loading}
@@ -562,6 +631,40 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
     const [deleting, setDeleting] = useState<Record<string, boolean>>({})
     const [savingSettings, setSavingSettings] = useState(false)
     const [isPickerOpen, setIsPickerOpen] = useState(false)
+    const [isDirty, setIsDirty] = useState(false)
+
+    // Unsaved Changes Warning
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault()
+                e.returnValue = ''
+            }
+        }
+
+        // Internal navigation interceptor
+        const handleAnchorClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            const anchor = target.closest('a')
+            if (anchor && isDirty) {
+                const href = anchor.getAttribute('href')
+                if (href && (href.startsWith('/') || href.startsWith(window.location.origin))) {
+                    if (!window.confirm('Vous avez des changements non enregistrés. Voulez-vous vraiment quitter ?')) {
+                        e.preventDefault()
+                        e.stopImmediatePropagation()
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('beforeunload', handleBeforeUnload)
+        window.addEventListener('click', handleAnchorClick, true)
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+            window.removeEventListener('click', handleAnchorClick, true)
+        }
+    }, [isDirty])
 
 
 
@@ -574,6 +677,12 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
     )
 
     // --- Actions ---
+
+    // Centralized Block Update
+    const handleBlockUpdate = (blockId: string, newContent: any) => {
+        setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, content: newContent } : b))
+        setIsDirty(true)
+    }
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveId(event.active.id as string)
@@ -588,31 +697,9 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
             const newIndex = blocks.findIndex((i) => i.id === over.id)
             const newItems = arrayMove(blocks, oldIndex, newIndex)
 
-            // Optimistic update
+            // Pure local update
             setBlocks(newItems)
-
-            // Trigger server update in background with toast promise
-            const updates = newItems.map((b, index) => ({
-                id: b.id,
-                position: index,
-                page_id: pageId,
-                type: b.type,
-                content: b.content
-            }))
-
-            toast.promise(
-                updateBlockPositions(projectId, pageId, updates),
-                {
-                    loading: 'Sauvegarde de l\'ordre...',
-                    success: (data) => {
-                        if (data.error) throw new Error(data.error)
-                        return 'Ordre sauvegardé'
-                    },
-                    error: (err) => {
-                        return `Erreur: ${err.message}`
-                    }
-                }
-            )
+            setIsDirty(true)
         }
     }
 
@@ -620,21 +707,29 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
         setLoadingAdd(true)
         try {
             let initialContent: any = { title: 'Nouveau bloc', url: '' }
+            if (type === 'image' || type === 'file') initialContent = { title: '', url: '' }
             if (type === 'header') initialContent = { title: 'Mon Profil', url: '' }
             if (type === 'social_grid') initialContent = { links: [{ icon: 'globe', url: '' }] }
             if (type === 'separator') initialContent = {}
             if (type === 'title') initialContent = { title: 'Nouveau Titre', align: 'left' }
             if (type === 'text') initialContent = { text: 'Votre texte ici...' }
             if (type === 'hero') initialContent = { title: 'Titre Hero', text: 'Description du hero', url: '' }
+            if (type === 'embed') initialContent = { url: '' }
             if (type === 'double-link') initialContent = { links: [{ label: 'Lien 1', url: '' }, { label: 'Lien 2', url: '' }] }
 
-            const result = await addBlockWithContent(projectId, pageId, type, initialContent)
-
-            if (result?.error) throw new Error(result.error)
-            if (result?.data) {
-                setBlocks(prev => [...prev, result.data as Block])
-                toast.success('Bloc ajouté')
+            const newBlock: Block = {
+                id: crypto.randomUUID(), // Local Temp ID
+                type,
+                content: initialContent,
+                position: blocks.length,
+                page_id: pageId,
+                is_visible: true
             }
+
+            setBlocks(prev => [...prev, newBlock])
+            setIsDirty(true)
+            toast.success('Bloc ajouté (Non sauvegardé)')
+
         } catch (error) {
             console.error('Failed to add block', error)
             toast.error('Erreur ajout bloc')
@@ -646,8 +741,8 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
     const [isSavingContent, setIsSavingContent] = useState(false)
 
     const handleUpdateContent = (blockId: string, newContent: any) => {
-        // Local state update only (for preview)
-        setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, content: newContent } : b))
+        // Local state update
+        handleBlockUpdate(blockId, newContent)
     }
 
     const handleSaveAllContent = async () => {
@@ -661,7 +756,8 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                 console.error('Server Action Error:', result.error)
                 toast.error(`Erreur: ${result.error}`)
             } else {
-                toast.success('Contenu sauvegardé avec succès')
+                toast.success('Tout le contenu a été sauvegardé')
+                setIsDirty(false)
             }
         } catch (error) {
             console.error('Failed to save content (Client Catch):', error)
@@ -671,100 +767,53 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
         }
     }
 
-    const handleToggleVisibility = async (blockId: string) => {
+    const handleToggleVisibility = (blockId: string) => {
         const block = blocks.find(b => b.id === blockId)
         if (!block) return
 
-        // Use content.is_visible as source of truth since column is missing
-        const currentVisibility = block.content.is_visible !== false // Default true
+        const currentVisibility = block.content.is_visible !== false
         const newVisibility = !currentVisibility
 
-        // Optimistic update: Update both top-level (for UI compatibility) and content (for persistence)
+        // Local update only
         setBlocks(prev => prev.map(b => b.id === blockId ? {
             ...b,
             is_visible: newVisibility,
             content: { ...b.content, is_visible: newVisibility }
         } : b))
 
-        try {
-            // Persist inside content JSONB
-            await updateBlock(projectId, pageId, blockId, { ...block.content, is_visible: newVisibility })
-            toast.success(newVisibility ? 'Bloc visible' : 'Bloc masqué')
-        } catch (error) {
-            console.error('Failed to toggle visibility', error)
-            toast.error('Erreur mise à jour visibilité')
-            // Revert optimistic update? For now, we trust it works or user will reload.
-        }
+        setIsDirty(true)
     }
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const handleSaveBlock = async (blockId: string) => {
+    const handleSaveBlock = (blockId: string) => {
         const edit = edits[blockId]
         if (!edit) return
 
+        // Update local block with edit state
+        setBlocks(prev => prev.map(b =>
+            b.id === blockId
+                ? { ...b, content: { ...b.content, title: edit.title, url: edit.url } }
+                : b
+        ))
+
+        toast.success('Modifications appliquées (Non sauvegardé)')
+        setIsDirty(true)
+
+        // Clear edit loading state
         setEdits(prev => ({
             ...prev,
-            [blockId]: { ...prev[blockId], loading: true }
+            [blockId]: { ...prev[blockId], loading: false }
         }))
-
-        try {
-            const result = await updateBlock(projectId, pageId, blockId, { title: edit.title, url: edit.url })
-            if (result?.error) throw new Error(result.error)
-
-            setBlocks(prev => prev.map(b =>
-                b.id === blockId
-                    ? { ...b, content: { ...b.content, title: edit.title, url: edit.url } }
-                    : b
-            ))
-            // Clear edit state or keep it? Usually keep it but update original.
-            // Actually if we save, we might want to exit edit mode or just update the "original" to match "edit".
-            // We'll update the block in state (done above) and keep edit state as is (it matches now).
-            toast.success('Bloc sauvegardé')
-        } catch (error) {
-            console.error('Failed to update block', error)
-            toast.error('Erreur sauvegarde bloc')
-        } finally {
-            setEdits(prev => ({
-                ...prev,
-                [blockId]: { ...prev[blockId], loading: false }
-            }))
-        }
     }
 
-    const handleDelete = async (blockId: string) => {
+    const handleDelete = (blockId: string) => {
         if (!confirm('Supprimer ce bloc ?')) return
-        setDeleting(prev => ({ ...prev, [blockId]: true }))
 
-        // Cleanup Storage File if exists
-        const block = blocks.find(b => b.id === blockId)
-        if (block && block.content.url) {
-            try {
-                const supabase = createClient()
-                const url = new URL(block.content.url)
-
-                // Cleanup based on bucket path detection
-                if (url.pathname.includes('/hero_assets/')) {
-                    const path = url.pathname.split('/hero_assets/')[1]
-                    await supabase.storage.from('hero_assets').remove([path])
-                } else if (url.pathname.includes('/uploads/')) {
-                    const path = url.pathname.split('/uploads/')[1]
-                    await supabase.storage.from('uploads').remove([path])
-                }
-            } catch (err) {
-                console.warn('File cleanup failed', err)
-            }
-        }
-
-        try {
-            await deleteBlock(projectId, pageId, blockId)
-            setBlocks(prev => prev.filter(b => b.id !== blockId))
-            toast.success('Bloc supprimé')
-        } catch (error) {
-            console.error('Failed to delete block', error)
-            toast.error('Erreur suppression')
-            setDeleting(prev => ({ ...prev, [blockId]: false }))
-        }
+        // Just remove locally
+        setBlocks(prev => prev.filter(b => b.id !== blockId))
+        setIsDirty(true)
+        toast.success('Bloc supprimé (Non sauvegardé)')
     }
     // Re-implementing the specific upload logic correctly:
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -901,16 +950,23 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
         const getFont = () => effectiveThemeConfig.typography?.fontFamily || DEFAULT_THEME_CONFIG.typography!.fontFamily
         const getSecondary = () => effectiveThemeConfig.colors?.secondary || DEFAULT_THEME_CONFIG.colors!.secondary
 
+        const boxShadow = getBoxShadow(
+            effectiveThemeConfig.shadows?.style || 'none',
+            effectiveThemeConfig.colors?.secondary || '#e5e7eb',
+            effectiveThemeConfig.shadows?.opacity ?? 0.5
+        )
+
         const containerStyle: React.CSSProperties = {
             backgroundColor: getBackground(),
             fontFamily: getFont(),
-            color: getText()
-        }
+            color: getText(),
+            '--pico-shadow': boxShadow,
+        } as React.CSSProperties
 
         const headerBg = effectiveThemeConfig.headerBackgroundImage
 
         return (
-            <div key={previewKey} className="h-[600px] w-full max-w-[375px] mx-auto overflow-y-auto border-8 border-gray-800 rounded-[3rem] shadow-2xl transition-colors duration-200 relative overflow-hidden scrollbar-hide" style={containerStyle}>
+            <div key={previewKey} className="h-[600px] w-full max-w-[375px] mx-auto overflow-y-auto border-8 border-gray-800 rounded-[3rem] shadow-2xl transition-colors duration-200 relative overflow-hidden scrollbar-hide" style={{ ...containerStyle, boxShadow: 'var(--pico-shadow)' }}>
 
                 {/* Debug Theme Name */}
 
@@ -957,6 +1013,8 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                             {block.type === 'link' && <LinkBlock content={block.content as any} config={effectiveThemeConfig} />}
 
                             {block.type === 'double-link' && <DoubleLinkBlock content={block.content as any} config={effectiveThemeConfig} />}
+
+                            {block.type === 'embed' && <EmbedBlock content={block.content as any} config={effectiveThemeConfig} />}
 
                             {block.type === 'image' && <img src={block.content.url} className="w-full rounded-lg shadow-sm" />}
 
@@ -1053,11 +1111,14 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                         <div className="pt-4 border-t border-gray-200">
                             <button
                                 onClick={handleSaveAllContent}
-                                disabled={isSavingContent}
-                                className="w-full flex justify-center items-center gap-2 bg-indigo-600 text-white p-3 rounded-md hover:bg-indigo-700 disabled:opacity-50 font-medium transition-colors"
+                                disabled={isSavingContent || !isDirty}
+                                className={`w-full flex justify-center items-center gap-2 text-white p-3 rounded-md font-medium transition-colors ${isDirty
+                                    ? 'bg-indigo-600 hover:bg-indigo-700 shadow-md transform hover:scale-[1.01]'
+                                    : 'bg-gray-400 cursor-not-allowed opacity-70'
+                                    }`}
                             >
                                 {isSavingContent ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                                Confirmer les changements
+                                {isDirty ? 'Enregistrer les modifications' : 'Aucun changement'}
                             </button>
                         </div>
                     </div>
@@ -1081,7 +1142,7 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                                 </button>
                             </div>
                             <p className="text-xs text-gray-500 text-justify leading-relaxed">
-                                Si cette page est dépubliée, elle ne sera plus accessible et les visiteurs seront redirigés vers la page d'accueil de PetitVerse.
+                                Si cette page est dépubliée, elle ne sera plus accessible et les visiteurs seront redirigés vers la page d'accueil de Picoverse.
                             </p>
                         </div>
 

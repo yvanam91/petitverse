@@ -22,6 +22,7 @@ export function DoubleLinkBlock({ content, config }: DoubleLinkBlockProps) {
     // Helper to get button inline styles (Same as LinkBlock but potentially smaller or adapted)
     const getButtonStyle = (): React.CSSProperties => {
         const primary = config.colors?.primary || config.buttonColor || '#000000'
+        const secondary = config.colors?.secondary || config.secondaryColor || '#e5e7eb'
         const buttonText = config.colors?.buttonText || config.buttonTextColor || '#ffffff'
         const fontFamily = config.typography?.fontFamily || config.fontFamily || 'Inter, sans-serif'
 
@@ -36,7 +37,8 @@ export function DoubleLinkBlock({ content, config }: DoubleLinkBlockProps) {
             borderStyle: config.borders?.style || 'solid',
             backgroundColor: primary,
             color: buttonText,
-            borderColor: 'transparent'
+            borderColor: secondary, // Use secondary
+            boxShadow: 'var(--pico-shadow)'
         }
 
         // Simplified variant logic for DoubleLink (can be expanded if needed, for now sticking to primary fill)
@@ -48,7 +50,7 @@ export function DoubleLinkBlock({ content, config }: DoubleLinkBlockProps) {
                 ...baseStyle,
                 backgroundColor: 'transparent',
                 color: primary,
-                borderColor: primary
+                borderColor: secondary // Use secondary
             }
         } else if (buttonVariant === 'soft-shadow') {
             return {
@@ -56,7 +58,7 @@ export function DoubleLinkBlock({ content, config }: DoubleLinkBlockProps) {
                 backgroundColor: '#ffffff',
                 color: '#000000',
                 boxShadow: `0 4px 12px ${primary}40`,
-                borderColor: '#f3f4f6',
+                borderColor: secondary, // Use secondary
                 borderWidth: '1px'
             }
         }

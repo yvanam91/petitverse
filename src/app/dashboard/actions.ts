@@ -261,49 +261,45 @@ export async function createPage(projectId: string, formData: FormData) {
         throw new Error('Le slug ne doit contenir que des minuscules, des chiffres et des tirets')
     }
 
-    // Check for project default theme
-
-    // Check for project default theme
+    // 1. Get Project Default Theme
     const { data: project } = await supabase
         .from('projects')
-        .select('default_theme_id')
+        .select('default_theme_id, slug')
         .eq('id', projectId)
         .single()
 
-    let themeIdToInsert = project?.default_theme_id
-
-    // Fallback: If no default_theme_id, try to find ANY theme attached to this project
-    if (!themeIdToInsert) {
-        const { data: themes } = await supabase
+    // 2. Get Theme Config (Inheritance)
+    let themeConfig = {}
+    if (project?.default_theme_id) {
+        const { data: theme } = await supabase
             .from('themes')
-            .select('id')
-            .eq('project_id', projectId)
-            .limit(1)
-
-        if (themes && themes.length > 0) {
-            themeIdToInsert = themes[0].id
-            console.log('--- Fallback Theme Found:', themeIdToInsert)
-        }
+            .select('config')
+            .eq('id', project.default_theme_id)
+            .single()
+        themeConfig = theme?.config || {}
     }
 
     console.log('--- Creating Page ---')
     console.log('Project ID:', projectId)
-    console.log('ID du thème sélectionné pour insertion:', themeIdToInsert)
+    console.log('Inheriting Theme ID:', project?.default_theme_id)
 
     const { data, error } = await supabase.from('pages').insert({
         project_id: projectId,
         title,
         slug,
         description,
-        config: {}, // Empty config to enforce theme inheritance
-        theme_id: themeIdToInsert // Assign discovered theme ID (may still be null if really no themes exist)
+        config: themeConfig, // Inject inherited config
+        theme_id: project?.default_theme_id // Link to theme
     }).select().single()
 
     if (error) {
         return { error: error.message }
     }
 
-    revalidatePath(`/dashboard/${projectId}`)
+    if (project?.slug) {
+        revalidatePath(`/dashboard/${project.slug}`)
+    }
+    revalidatePath(`/dashboard/${projectId}`) // Keep ID for safety
     return { data }
 }
 
@@ -572,7 +568,7 @@ export async function getThemes(projectId: string): Promise<Theme[]> {
 export async function saveDefaultTheme(config: PageConfig) {
     const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
-    cookieStore.set('korner_default_theme', JSON.stringify(config), { secure: true, httpOnly: true, sameSite: 'lax' })
+    cookieStore.set('picoverse_default_theme', JSON.stringify(config), { secure: true, httpOnly: true, sameSite: 'lax' })
     return { success: true }
 }
 
@@ -669,6 +665,38 @@ export async function updateTheme(themeId: string, name: string, config: PageCon
     return { success: true }
 }
 
+export async function deleteTheme(themeId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: 'Unauthorized' }
+
+    // Verify ownership
+    const { data: theme } = await supabase
+        .from('themes')
+        .select('id, user_id')
+        .eq('id', themeId)
+        .eq('user_id', user.id)
+        .single()
+
+    if (!theme) return { error: 'Unauthorized or Theme not found' }
+
+    // Check if it's the project default theme (optional safety check, but maybe not required by user)
+    // For now, just delete.
+
+    const { error } = await supabase
+        .from('themes')
+        .delete()
+        .eq('id', themeId)
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    revalidatePath('/dashboard')
+    return { success: true }
+}
+
 export async function applyThemeToProject(projectId: string, themeId: string) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -729,6 +757,28 @@ export async function updateProjectContent(projectId: string, pageId: string, bl
     if (!project) return { error: 'Unauthorized' }
 
     try {
+        // 1. Get existing blocks to identify deletions
+        const { data: existingBlocks } = await supabase
+            .from('blocks')
+            .select('id')
+            .eq('page_id', pageId)
+
+        const existingIds = existingBlocks?.map(b => b.id) || []
+        const incomingIds = blocks.map(b => b.id)
+
+        // 2. Identify blocks to delete (present in DB but not in payload)
+        const idsToDelete = existingIds.filter(id => !incomingIds.includes(id))
+
+        if (idsToDelete.length > 0) {
+            const { error: deleteError } = await supabase
+                .from('blocks')
+                .delete()
+                .in('id', idsToDelete)
+
+            if (deleteError) throw deleteError
+        }
+
+        // 3. Upsert content
         const updates = blocks.map(b => ({
             id: b.id,
             page_id: pageId,

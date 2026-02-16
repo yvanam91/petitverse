@@ -176,7 +176,7 @@ export default function SignupPage() {
                         Créer un compte
                     </h2>
                     <p className="mt-2 text-sm text-gray-600">
-                        Rejoignez PetitVerse aujourd'hui
+                        Rejoignez Picoverse aujourd'hui
                     </p>
                 </div>
 
@@ -229,7 +229,7 @@ export default function SignupPage() {
                         )}
                         {!usernameError && username && (
                             <p className="mt-1 text-xs text-gray-500 truncate">
-                                Votre URL : <span className="font-mono text-indigo-600">petitverse.com/p/@{normalizedUsername}</span>
+                                Votre URL : <span className="font-mono text-indigo-600">picoverse.com/p/@{normalizedUsername}</span>
                             </p>
                         )}
                     </div>

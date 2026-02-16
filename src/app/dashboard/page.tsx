@@ -29,7 +29,7 @@ export default async function DashboardPage() {
             <div className="text-center py-12 rounded-lg border-2 border-dashed border-gray-300 p-12 bg-white">
                 <Folder className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-semibold text-gray-900">
-                    Bienvenue sur Korner
+                    Bienvenue sur Picoverse
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
                     Créez votre premier projet pour commencer.

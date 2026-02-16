@@ -13,6 +13,7 @@ export function LinkBlock({ content, config }: LinkBlockProps) {
     // Helper to get button inline styles
     const getButtonStyle = (): React.CSSProperties => {
         const primary = config.colors?.primary || config.buttonColor || '#000000'
+        const secondary = config.colors?.secondary || config.secondaryColor || '#e5e7eb'
         const buttonText = config.colors?.buttonText || config.buttonTextColor || '#ffffff'
         const fontFamily = config.typography?.fontFamily || config.fontFamily || 'Inter, sans-serif'
 
@@ -24,7 +25,8 @@ export function LinkBlock({ content, config }: LinkBlockProps) {
             borderWidth: config.borders?.width || (buttonVariant === 'outline' ? '2px' : buttonVariant === 'soft-shadow' ? '1px' : '0px'),
             fontFamily: fontFamily,
             transition: 'all 0.2s',
-            borderStyle: config.borders?.style || 'solid'
+            borderStyle: config.borders?.style || 'solid',
+            boxShadow: 'var(--pico-shadow)' // Apply shadow
         }
 
         if (buttonVariant === 'outline') {
@@ -32,7 +34,7 @@ export function LinkBlock({ content, config }: LinkBlockProps) {
                 ...baseStyle,
                 backgroundColor: 'transparent',
                 color: primary,
-                borderColor: primary
+                borderColor: secondary // Use secondary
             }
         } else if (buttonVariant === 'soft-shadow') {
             return {
@@ -40,7 +42,7 @@ export function LinkBlock({ content, config }: LinkBlockProps) {
                 backgroundColor: '#ffffff',
                 color: '#000000',
                 boxShadow: `0 4px 12px ${primary}40`,
-                borderColor: '#f3f4f6',
+                borderColor: secondary, // Use secondary
                 borderWidth: '1px'
             }
         } else {
@@ -49,7 +51,7 @@ export function LinkBlock({ content, config }: LinkBlockProps) {
                 ...baseStyle,
                 backgroundColor: primary,
                 color: buttonText,
-                borderColor: 'transparent'
+                borderColor: secondary // Use secondary for border if defined
             }
         }
     }

@@ -27,7 +27,7 @@ export function AccountForm({ initialUsername }: { initialUsername: string | nul
                 />
                 <p className="mt-1 text-sm text-gray-500">
                     Ce nom d'utilisateur sera utilisé dans vos URLs publiques :<br />
-                    <span className="font-mono text-xs bg-gray-100 p-1 rounded">korner.com/p/{initialUsername || '[username]'}/...</span>
+                    <span className="font-mono text-xs bg-gray-100 p-1 rounded">picoverse.com/p/{initialUsername || '[username]'}/...</span>
                 </p>
                 {state?.error && (
                     <p className="mt-2 text-sm text-red-600">

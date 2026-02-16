@@ -8,6 +8,8 @@ import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
 import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
 import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
 import { DoubleLinkBlock } from '@/components/shared/blocks/DoubleLinkBlock'
+import { EmbedBlock } from '@/components/shared/blocks/EmbedBlock'
+import { getBoxShadow } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +29,7 @@ async function getPageData(username: string, projectSlug: string, pageSlug: stri
     // 2. Find Project
     const { data: project } = await supabase
         .from('projects')
-        .select('*')
+        .select('*') // We need default_theme_id
         .eq('slug', projectSlug)
         .eq('user_id', user.id)
         .single()
@@ -111,8 +113,38 @@ export default async function PublicPage({
         buttonVariant: 'fill'
     }
 
-    // STRICT PRIORITY: Theme -> Page Config -> System Default
-    const effectiveConfig = (page.theme?.config || page.config || DEFAULT_CONFIG) as PageConfig
+    // FALLBACK LOGIC: 
+    // 1. Page Specific Theme
+    // 2. Page Specific Config (Legacy or Override) - *Actually usually we want Theme > Config? Or Config > Theme?*
+    //    User said: "si la page.config est vide ou si page.theme_id est nul, utiliser config du default_theme_id"
+    //    So priority: Page Theme > Page Config (if not empty) > Projects Default Theme > System Default
+
+    let themeConfig = page.theme?.config || page.config
+
+    // Check if empty object (Supabase currently defaults jsonb to {} sometimes?)
+    const isConfigEmpty = !themeConfig || (typeof themeConfig === 'object' && Object.keys(themeConfig).length === 0)
+
+    if (isConfigEmpty && !page.theme_id && data.project.default_theme_id) {
+        // Fetch Project Default Theme if not already available
+        // Optimization: We could have fetched this in getPageData, but let's do it lazily or pre-fetch.
+        // Since this is a server component, we can just fetch it here if needed.
+        // IMPROVEMENT: Let's modify getPageData to fetch it to avoid waterfall if possible, 
+        // OR just fetch it here.
+        const supabase = await createClient()
+        const { data: defaultTheme } = await supabase
+            .from('themes')
+            .select('config')
+            .eq('id', data.project.default_theme_id)
+            .single()
+
+        if (defaultTheme) {
+            themeConfig = defaultTheme.config
+        }
+    }
+
+    const effectiveConfig = (themeConfig || DEFAULT_CONFIG) as PageConfig
+
+    // Helper removed, using import from utils
 
     // Dynamic Style Injection
     const themeStyles = {
@@ -128,6 +160,7 @@ export default async function PublicPage({
         '--border-radius': effectiveConfig.borders?.radius || '8px',
         '--border-width': effectiveConfig.borders?.width || '1px',
         '--divider-style': effectiveConfig.dividers?.style || 'solid',
+        '--pico-shadow': getBoxShadow(effectiveConfig.shadows?.style || 'none', effectiveConfig.colors?.secondary || '#e5e7eb', effectiveConfig.shadows?.opacity ?? 0.5),
 
         fontFamily: 'var(--font-family)',
         backgroundColor: 'var(--bg-color)',
@@ -139,129 +172,147 @@ export default async function PublicPage({
     } as React.CSSProperties
 
     return (
-        <div style={themeStyles} className="min-h-screen transition-colors duration-300">
-            <div className="max-w-3xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-                {/* Blocks Rendering */}
-                <div className="space-y-6">
-                    {blocks?.sort((a, b) => a.position - b.position).map((block) => {
-                        if (block.is_visible === false) return null
+        <>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .public-page-root {
+                    background-color: var(--bg-color);
+                }
+                @media (min-width: 1024px) {
+                    .public-page-root {
+                        background-color: color-mix(in srgb, var(--primary), black 10%);
+                    }
+                }
+            `}} />
+            <div style={themeStyles} className="public-page-root min-h-screen w-full flex flex-col justify-center lg:py-8 transition-colors duration-300">
+                <div
+                    className="w-full lg:max-w-[480px] mx-auto min-h-screen lg:min-h-0 bg-[var(--bg-color)] lg:shadow-[var(--pico-shadow)] lg:rounded-[calc(var(--border-radius)*2)] transition-shadow duration-300 px-4 py-12 sm:px-6 lg:px-8"
+                >
+                    {/* Blocks Rendering */}
+                    <div className="space-y-6">
+                        {blocks?.sort((a, b) => a.position - b.position).map((block) => {
+                            if (block.is_visible === false) return null
 
-                        // Grid Width Class
-                        const widthClass = block.content.width === 'half' ? 'w-[calc(50%-0.5rem)]' : 'w-full'
+                            // Grid Width Class
+                            const widthClass = block.content.width === 'half' ? 'w-[calc(50%-0.5rem)]' : 'w-full'
 
-                        // Specific wrapper for width
-                        const content = (() => {
-                            switch (block.type) {
-                                case 'header':
-                                    return <HeaderBlock content={block.content as any} config={effectiveConfig} />
+                            // Specific wrapper for width
+                            const content = (() => {
+                                switch (block.type) {
+                                    case 'header':
+                                        return <HeaderBlock content={block.content as any} config={effectiveConfig} />
 
-                                case 'social_grid':
-                                    return <SocialGridBlock content={block.content as any} config={effectiveConfig} />
+                                    case 'social_grid':
+                                        return <SocialGridBlock content={block.content as any} config={effectiveConfig} />
 
-                                case 'separator':
-                                    return <hr className="border-t my-4 w-2/3 mx-auto opacity-50" style={{ borderColor: 'var(--secondary)', borderStyle: 'var(--divider-style)' }} />
+                                    case 'separator':
+                                        return <hr className="border-t my-4 w-2/3 mx-auto opacity-50" style={{ borderColor: 'var(--secondary)', borderStyle: 'var(--divider-style)' }} />
 
-                                case 'title':
-                                    return (
-                                        <h2 className={`text-2xl font-bold w-full mb-2 ${block.content.align === 'center' ? 'text-center' : block.content.align === 'right' ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text)' }}>
-                                            {block.content.title}
-                                        </h2>
-                                    )
+                                    case 'title':
+                                        return (
+                                            <h2 className={`text-2xl font-bold w-full mb-2 ${block.content.align === 'center' ? 'text-center' : block.content.align === 'right' ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text)' }}>
+                                                {block.content.title}
+                                            </h2>
+                                        )
 
-                                case 'text':
-                                    return (
-                                        <div className="w-full whitespace-pre-wrap mb-4" style={{ color: 'var(--text)' }}>
-                                            {block.content.text}
-                                        </div>
-                                    )
+                                    case 'text':
+                                        return (
+                                            <div className="w-full whitespace-pre-wrap mb-4" style={{ color: 'var(--text)' }}>
+                                                {block.content.text}
+                                            </div>
+                                        )
 
-                                case 'double-link':
-                                    return <DoubleLinkBlock content={block.content as any} config={effectiveConfig} />
+                                    case 'double-link':
+                                        return <DoubleLinkBlock content={block.content as any} config={effectiveConfig} />
 
-                                case 'hero':
-                                    return (
-                                        <div className="w-full flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-2xl shadow-sm my-4">
-                                            {block.content.url && (
-                                                <div className="w-full md:w-1/2">
-                                                    <img
-                                                        src={block.content.url}
-                                                        alt={block.content.title}
-                                                        className="w-full h-64 object-cover rounded-xl shadow-sm"
-                                                    />
+                                    case 'hero':
+                                        return (
+                                            <div className="w-full flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-2xl shadow-sm my-4">
+                                                {block.content.url && (
+                                                    <div className="w-full md:w-1/2">
+                                                        <img
+                                                            src={block.content.url}
+                                                            alt={block.content.title}
+                                                            className="w-full h-64 object-cover rounded-xl shadow-sm"
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className={`w-full ${block.content.url ? 'md:w-1/2' : ''} flex flex-col gap-3 text-center md:text-left`}>
+                                                    <h2 className="text-2xl md:text-3xl font-bold leading-tight" style={{ color: '#1f2937' }}>
+                                                        {block.content.title}
+                                                    </h2>
+                                                    <p className="leading-relaxed whitespace-pre-wrap opacity-80" style={{ color: '#4b5563' }}>
+                                                        {block.content.text}
+                                                    </p>
                                                 </div>
-                                            )}
-                                            <div className={`w-full ${block.content.url ? 'md:w-1/2' : ''} flex flex-col gap-3 text-center md:text-left`}>
-                                                <h2 className="text-2xl md:text-3xl font-bold leading-tight" style={{ color: '#1f2937' }}>
-                                                    {block.content.title}
-                                                </h2>
-                                                <p className="leading-relaxed whitespace-pre-wrap opacity-80" style={{ color: '#4b5563' }}>
-                                                    {block.content.text}
-                                                </p>
                                             </div>
-                                        </div>
-                                    )
+                                        )
 
-                                case 'link':
-                                    return <LinkBlock content={block.content as any} config={effectiveConfig} />
+                                    case 'link':
+                                        return <LinkBlock content={block.content as any} config={effectiveConfig} />
 
-                                case 'file':
-                                    return (
-                                        <a
-                                            href={block.content.url}
-                                            download
-                                            className="group flex w-full items-center gap-4 rounded-lg bg-white/90 p-4 shadow-sm ring-1 ring-gray-200 transition-all hover:ring-2 hover:ring-indigo-500 backdrop-blur-sm"
-                                        >
-                                            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-                                                <FileText className="h-6 w-6" />
+                                    case 'embed':
+                                        return <EmbedBlock content={block.content as any} config={effectiveConfig} />
+
+                                    case 'file':
+                                        return (
+                                            <a
+                                                href={block.content.url}
+                                                download
+                                                className="group flex w-full items-center gap-4 rounded-lg bg-white/90 p-4 shadow-sm ring-1 ring-gray-200 transition-all hover:ring-2 hover:ring-indigo-500 backdrop-blur-sm"
+                                            >
+                                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+                                                    <FileText className="h-6 w-6" />
+                                                </div>
+                                                <div className="flex-1 overflow-hidden">
+                                                    <p className="truncate font-medium text-gray-900">
+                                                        {block.content.title || 'Document'}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Télécharger le fichier
+                                                    </p>
+                                                </div>
+                                            </a>
+                                        )
+
+                                    case 'image':
+                                        return (
+                                            <div className="w-full">
+                                                <img
+                                                    src={block.content.url}
+                                                    alt={block.content.title || 'Image'}
+                                                    className="w-full h-auto rounded-lg shadow-sm"
+                                                    style={{ maxHeight: '500px', objectFit: 'contain' }}
+                                                />
                                             </div>
-                                            <div className="flex-1 overflow-hidden">
-                                                <p className="truncate font-medium text-gray-900">
-                                                    {block.content.title || 'Document'}
-                                                </p>
-                                                <p className="text-sm text-gray-500">
-                                                    Télécharger le fichier
-                                                </p>
-                                            </div>
-                                        </a>
-                                    )
+                                        )
 
-                                case 'image':
-                                    return (
-                                        <div className="w-full">
-                                            <img
-                                                src={block.content.url}
-                                                alt={block.content.title || 'Image'}
-                                                className="w-full h-auto rounded-lg shadow-sm"
-                                                style={{ maxHeight: '500px', objectFit: 'contain' }}
-                                            />
-                                        </div>
-                                    )
+                                    default:
+                                        return null
+                                }
+                            })()
 
-                                default:
-                                    return null
-                            }
-                        })()
+                            if (!content) return null
 
-                        if (!content) return null
+                            return (
+                                <div key={block.id} className={widthClass}>
+                                    {content}
+                                </div>
+                            )
+                        })}
 
-                        return (
-                            <div key={block.id} className={widthClass}>
-                                {content}
+                        {blocks && blocks.length === 0 && (
+                            <div className="text-center text-gray-500 py-10 w-full">
+                                Cette page est vide pour le moment.
                             </div>
-                        )
-                    })}
+                        )}
+                    </div>
 
-                    {blocks && blocks.length === 0 && (
-                        <div className="text-center text-gray-500 py-10 w-full">
-                            Cette page est vide pour le moment.
-                        </div>
-                    )}
+                    <footer className="text-center py-6 text-sm text-gray-400 opacity-60">
+                        Propulsé par Picoverse
+                    </footer>
                 </div>
-
-                <footer className="text-center py-6 text-sm text-gray-400 opacity-60">
-                    Propulsé par Korner
-                </footer>
             </div>
-        </div>
+        </>
     )
 }

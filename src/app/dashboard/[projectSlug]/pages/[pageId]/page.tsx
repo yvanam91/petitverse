@@ -97,7 +97,7 @@ export default async function EditorPage({
                             projectId={project.id}
                             pageId={pageId}
                             initialBlocks={(blocks as Block[]) || []}
-                            initialConfig={(page as Page).config || {}}
+                            initialConfig={(page as Page).config && Object.keys((page as Page).config || {}).length > 0 ? (page as Page).config : (defaultTheme?.config || {})}
                             initialPublishedState={(page as Page).is_published ?? true}
                             initialMetaTitle={(page as Page).meta_title}
                             initialTheme={(page as any).theme || defaultTheme}
