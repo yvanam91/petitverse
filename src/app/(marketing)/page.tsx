@@ -11,7 +11,7 @@ export default function LandingPage() {
             <div className="flex flex-col items-center justify-center px-4 py-20 text-center sm:px-6 lg:px-8">
                 <div className="max-w-4xl space-y-8">
                     <h1 className="text-4xl font-bold tracking-tight sm:text-6xl text-[var(--foreground)] font-[var(--font-heading)]">
-                        Picoverse : Le page builder minimal pour vos ambitions web.
+                        Picoverse : Le page builder minimaliste pour votre présence en ligne.
                     </h1>
 
                     <p className="mx-auto max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">

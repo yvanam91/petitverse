@@ -34,7 +34,7 @@ export async function SmartCTA({ className, variant = 'hero' }: SmartCTAProps) {
                 <Link
                     href={href}
                     className={cn(
-                        "inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200",
+                        "pv-primary",
                         className
                     )}
                 >
@@ -46,7 +46,7 @@ export async function SmartCTA({ className, variant = 'hero' }: SmartCTAProps) {
                 <Link
                     href={href}
                     className={cn(
-                        "inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90",
+                        "pv-primary",
                         className
                     )}
                 >
@@ -61,7 +61,7 @@ export async function SmartCTA({ className, variant = 'hero' }: SmartCTAProps) {
         <Link
             href={href}
             className={cn(
-                "rounded-[var(--radius)] bg-[var(--primary)] px-8 py-3 text-base font-semibold text-white shadow-sm hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
+                "pv-primary px-8 py-3",
                 className
             )}
         >

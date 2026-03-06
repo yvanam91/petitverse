@@ -174,3 +174,48 @@ body {
 .alert-background {
   background-color: color-mix(in srgb, var(--pv-accent-red), transparent 90%);
 }
+
+/* ========================================================================= */
+/* Picoverse Utilities                                                       */
+/* ========================================================================= */
+.pv-primary {
+  background: var(--pv-gradient-strong);
+  color: var(--pv-white-0);
+  font-family: var(--pv-font-inter);
+  font-weight: var(--pv-weight-bold);
+  font-size: var(--pv-text-16);
+  min-height: 40px;
+  padding: 8px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pv-radius-8);
+  transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.pv-primary:hover {
+  background: var(--pv-gradient-soft);
+  color: rgba(243, 238, 248, 0.8);
+  /* --pv-white-0 with 0.8 opacity */
+}
+
+.pv-deactivated {
+  background: #27272a;
+  color: rgba(243, 238, 248, 0.4);
+  font-family: var(--pv-font-inter);
+  font-weight: var(--pv-weight-bold);
+  font-size: var(--pv-text-16);
+  min-height: 40px;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pv-radius-8);
+  border: none;
+  cursor: not-allowed;
+  text-decoration: none;
+  pointer-events: none;
+}

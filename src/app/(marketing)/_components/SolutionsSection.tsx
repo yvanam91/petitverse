@@ -11,14 +11,14 @@ const TABS = [
         label: 'Page personnelle',
         icon: LayoutTemplate,
         title: 'Votre carte de visite numérique',
-        description: "Centralisez votre présence en ligne. Une page unique pour présenter qui vous êtes, ce que vous faites et où vous trouver. Idéal pour les créateurs, freelances et professionnels.",
+        description: "Centralisez votre présence en ligne. Un endroit unique pour présenter qui vous êtes, ce que vous faites et où vous trouver. Idéal pour les créateurs, freelances et professionnels.",
     },
     {
         id: 'projects',
         label: 'Projets',
         icon: WalletCards,
-        title: 'Showcasez vos réalisations',
-        description: "Révolutionnez le link-in-bio. Créez des pages dédiées pour chaque projet, produit ou événement. Gardez votre audience concentrée sur ce qui compte vraiment.",
+        title: 'Tout le monde a droit à son espace',
+        description: "Créez des pages dédiées pour chaque projet, produit ou événement. Gardez votre audience concentrée sur ce qui compte vraiment. Parfois, une seule page ne suffit pas. Jusqu'à 3 pages gratuites et 30 pages pour les comptes premium",
     },
     {
         id: 'tools',
@@ -31,7 +31,7 @@ const TABS = [
         id: 'theme',
         label: 'Thème',
         icon: Palette,
-        title: 'Design système unifié',
+        title: 'Un thème unifié sur toutes vos pages',
         description: "Une cohérence visuelle parfaite. Définissez vos couleurs et polices une seule fois, elles s'appliquent partout. Vos pages restent toujours alignées avec votre marque.",
     },
 ]
@@ -61,8 +61,8 @@ export function SolutionsSection() {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all relative ${isActive
-                                        ? 'text-[var(--primary)] bg-white dark:bg-zinc-800 shadow-sm'
-                                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+                                    ? 'text-[var(--primary)] bg-white dark:bg-zinc-800 shadow-sm'
+                                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
                                     }`}
                             >
                                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[var(--primary)]' : ''}`} />

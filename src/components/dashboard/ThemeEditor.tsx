@@ -6,10 +6,26 @@ import { saveTheme, updateTheme, applyThemeToProject, deleteTheme } from '@/app/
 import { toast } from 'sonner'
 import { Loader2, Check, Save, Trash2 } from 'lucide-react'
 import { getBoxShadow } from '@/lib/utils'
+import { fontMap } from '@/styles/fonts'
 
 interface ThemeEditorProps {
     themes: Theme[]
     projectId: string
+}
+
+const normalizeHex = (hex: string): string => {
+    if (!hex) return '#000000'
+    let cleanHex = hex.startsWith('#') ? hex.slice(1) : hex
+    // Expand shorthand #FFF -> #FFFFFF
+    if (cleanHex.length === 3) {
+        cleanHex = cleanHex.split('').map(char => char + char).join('')
+    }
+    // Pad to 6 chars or truncate
+    if (cleanHex.length < 6) cleanHex = cleanHex.padEnd(6, '0')
+    if (cleanHex.length > 6) cleanHex = cleanHex.slice(0, 6)
+    // Basic test for valid hex chars
+    if (!/^[0-9A-Fa-f]{6}$/.test(cleanHex)) return '#000000'
+    return `#${cleanHex}`
 }
 
 export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorProps) {
@@ -33,7 +49,7 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                 style: baseConfig.borders?.style || 'solid'
             },
             typography: {
-                fontFamily: baseConfig.typography?.fontFamily || baseConfig.fontFamily || 'Inter, sans-serif'
+                fontFamily: baseConfig.typography?.fontFamily || baseConfig.fontFamily || 'inter'
             },
             dividers: {
                 style: baseConfig.dividers?.style || 'solid',
@@ -165,30 +181,30 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
     }
 
     const previewStyle = {
-        '--bg-color': config.colors?.background || '#ffffff',
-        '--primary': config.colors?.primary || '#000000',
-        '--secondary': config.colors?.secondary || '#e5e7eb',
-        '--text': config.colors?.text || '#1f2937',
-        '--link': config.colors?.link || '#000000',
-        '--btn-text': config.colors?.buttonText || '#ffffff',
-        '--font-family': config.typography?.fontFamily || 'Inter, sans-serif',
-        '--border-radius': config.borders?.radius || '8px',
-        '--border-width': config.borders?.width || '1px',
-        '--divider-style': config.dividers?.style || 'solid',
+        '--pico-bg': config.colors?.background || '#ffffff',
+        '--pico-primary': config.colors?.primary || '#000000',
+        '--pico-secondary': config.colors?.secondary || '#e5e7eb',
+        '--pico-text': config.colors?.text || '#1f2937',
+        '--pico-link': config.colors?.link || '#000000',
+        '--pico-btn-text': config.colors?.buttonText || '#ffffff',
+        '--pico-radius': config.borders?.radius || '8px',
+        '--pico-border-width': config.borders?.width || '1px',
+        '--pico-divider-style': config.dividers?.style || 'solid',
         '--pico-shadow': getBoxShadow(config.shadows?.style || 'none', config.colors?.secondary || '#e5e7eb', config.shadows?.opacity ?? 0.5),
-        fontFamily: 'var(--font-family)',
-        backgroundColor: 'var(--bg-color)',
-        color: 'var(--text)',
+        '--pico-font': fontMap[config.typography?.fontFamily || 'inter'] || 'var(--font-inter)',
+        fontFamily: 'var(--pico-font)',
+        backgroundColor: 'var(--pico-bg)',
+        color: 'var(--pico-text)',
     } as React.CSSProperties
 
     return (
-        <div>
-            <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-8rem)]">
+        <div className="bg-pv-dark-100">
+            <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-8rem)] p-4">
                 {/* Left: Controls */}
-                <div className="w-full lg:w-1/3 flex flex-col gap-6 overflow-y-auto pr-2 pb-10">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="w-full lg:w-1/2 flex flex-col gap-6 overflow-y-auto pr-2 pb-10">
+                    <div className="bg-pv-dark-200 p-6 rounded-xl shadow-sm border border-white/10 text-pv-white-0">
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Sélectionner un thème</label>
+                            <label className="block font-pv-jost font-bold text-[12px] uppercase tracking-wider text-pv-white-0/70 mb-2">Sélectionner un thème</label>
                             <select
                                 value={selectedThemeId || 'new'}
                                 onChange={(e) => {
@@ -200,7 +216,7 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                                         setSelectedThemeId(e.target.value)
                                     }
                                 }}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border text-slate-900"
+                                className="w-full rounded-md border-white/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 text-pv-16 font-pv-jost p-2 border text-pv-white-0 placeholder:text-pv-white-0/30"
                             >
                                 <option value="new">+ Créer un nouveau thème</option>
                                 {themes.map(t => (
@@ -210,94 +226,130 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                         </div>
 
                         <div className="mb-6">
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Nom du thème</label>
+                            <label className="block font-pv-jost font-bold text-[12px] uppercase tracking-wider text-pv-white-0/70 mb-2">Nom du thème</label>
                             <input
                                 type="text"
                                 value={themeName}
                                 onChange={(e) => setThemeName(e.target.value)}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border text-slate-900"
+                                placeholder="Nom de votre thème"
+                                className="w-full rounded-md border-white/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 text-pv-16 font-pv-jost p-2 border text-pv-white-0 placeholder:text-pv-white-0/30"
                             />
                         </div>
 
                         <div className="space-y-6">
                             {/* Typography */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-900 mb-3">Typographie</h3>
+                                <h3 className="font-pv-jost font-bold text-[12px] uppercase tracking-wider text-pv-white-0 mb-3">Typographie</h3>
                                 <select
                                     value={config.typography?.fontFamily}
                                     onChange={(e) => setConfig(prev => ({ ...prev, typography: { ...prev.typography!, fontFamily: e.target.value } }))}
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border text-slate-900"
+                                    className="w-full rounded-md border-white/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 text-pv-16 font-pv-jost p-2 border text-pv-white-0"
                                 >
-                                    <option value="Inter, sans-serif">Inter</option>
-                                    <option value="Roboto, sans-serif">Roboto</option>
-                                    <option value="'Open Sans', sans-serif">Open Sans</option>
-                                    <option value="'Playfair Display', serif">Playfair Display</option>
-                                    <option value="'Courier New', monospace">Courier New</option>
+                                    <option value="inter">Inter</option>
+                                    <option value="open-sans">Open Sans</option>
+                                    <option value="montserrat">Montserrat</option>
+                                    <option value="lexend">Lexend</option>
+                                    <option value="space-grotesk">Space Grotesk</option>
                                 </select>
                             </div>
 
                             {/* Colors */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-900 mb-3">Palette de couleurs</h3>
+                                <h3 className="font-pv-jost font-bold text-[12px] uppercase tracking-wider text-pv-white-0 mb-3">Palette de couleurs</h3>
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-slate-700">Arrière-plan</span>
-                                        <div className="flex items-center gap-2">
+                                        <span className="font-pv-jost font-normal text-pv-12 text-pv-white-0/80">Arrière-plan</span>
+                                        <div className="flex items-center gap-3">
                                             <input
-                                                type="color"
+                                                type="text"
                                                 value={config.colors?.background}
                                                 onChange={(e) => handleColorChange('background', e.target.value)}
-                                                className="h-8 w-14 rounded cursor-pointer border-0 p-0"
+                                                className="w-20 bg-transparent border-b border-white/10 text-pv-white-0 text-xs font-mono uppercase focus:border-pv-brand-500 outline-none text-right"
                                             />
-                                            <span className="text-xs text-gray-400 w-16 text-right font-mono">{config.colors?.background}</span>
+                                            <div className="relative h-8 w-14 rounded overflow-hidden shadow-inner border border-white/5">
+                                                <input
+                                                    type="color"
+                                                    value={normalizeHex(config.colors?.background || '#ffffff')}
+                                                    onChange={(e) => handleColorChange('background', e.target.value)}
+                                                    className="absolute -inset-1 h-[150%] w-[150%] cursor-pointer border-0 p-0 bg-transparent"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-slate-700">Primaire (Boutons)</span>
-                                        <div className="flex items-center gap-2">
+                                        <span className="font-pv-jost font-normal text-pv-12 text-pv-white-0/80">Primaire (Boutons)</span>
+                                        <div className="flex items-center gap-3">
                                             <input
-                                                type="color"
+                                                type="text"
                                                 value={config.colors?.primary}
                                                 onChange={(e) => handleColorChange('primary', e.target.value)}
-                                                className="h-8 w-14 rounded cursor-pointer border-0 p-0"
+                                                className="w-20 bg-transparent border-b border-white/10 text-pv-white-0 text-xs font-mono uppercase focus:border-pv-brand-500 outline-none text-right"
                                             />
-                                            <span className="text-xs text-gray-400 w-16 text-right font-mono">{config.colors?.primary}</span>
+                                            <div className="relative h-8 w-14 rounded overflow-hidden shadow-inner border border-white/5">
+                                                <input
+                                                    type="color"
+                                                    value={normalizeHex(config.colors?.primary || '#000000')}
+                                                    onChange={(e) => handleColorChange('primary', e.target.value)}
+                                                    className="absolute -inset-1 h-[150%] w-[150%] cursor-pointer border-0 p-0 bg-transparent"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-slate-700">Texte Bouton</span>
-                                        <div className="flex items-center gap-2">
+                                        <span className="font-pv-jost font-normal text-pv-12 text-pv-white-0/80">Texte Bouton</span>
+                                        <div className="flex items-center gap-3">
                                             <input
-                                                type="color"
+                                                type="text"
                                                 value={config.colors?.buttonText}
                                                 onChange={(e) => handleColorChange('buttonText', e.target.value)}
-                                                className="h-8 w-14 rounded cursor-pointer border-0 p-0"
+                                                className="w-20 bg-transparent border-b border-white/10 text-pv-white-0 text-xs font-mono uppercase focus:border-pv-brand-500 outline-none text-right"
                                             />
-                                            <span className="text-xs text-gray-400 w-16 text-right font-mono">{config.colors?.buttonText}</span>
+                                            <div className="relative h-8 w-14 rounded overflow-hidden shadow-inner border border-white/5">
+                                                <input
+                                                    type="color"
+                                                    value={normalizeHex(config.colors?.buttonText || '#ffffff')}
+                                                    onChange={(e) => handleColorChange('buttonText', e.target.value)}
+                                                    className="absolute -inset-1 h-[150%] w-[150%] cursor-pointer border-0 p-0 bg-transparent"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-slate-700">Secondaire (Diviseurs)</span>
-                                        <div className="flex items-center gap-2">
+                                        <span className="font-pv-jost font-normal text-pv-12 text-pv-white-0/80">Secondaire (Diviseurs)</span>
+                                        <div className="flex items-center gap-3">
                                             <input
-                                                type="color"
+                                                type="text"
                                                 value={config.colors?.secondary}
                                                 onChange={(e) => handleColorChange('secondary', e.target.value)}
-                                                className="h-8 w-14 rounded cursor-pointer border-0 p-0"
+                                                className="w-20 bg-transparent border-b border-white/10 text-pv-white-0 text-xs font-mono uppercase focus:border-pv-brand-500 outline-none text-right"
                                             />
-                                            <span className="text-xs text-gray-400 w-16 text-right font-mono">{config.colors?.secondary}</span>
+                                            <div className="relative h-8 w-14 rounded overflow-hidden shadow-inner border border-white/5">
+                                                <input
+                                                    type="color"
+                                                    value={normalizeHex(config.colors?.secondary || '#e5e7eb')}
+                                                    onChange={(e) => handleColorChange('secondary', e.target.value)}
+                                                    className="absolute -inset-1 h-[150%] w-[150%] cursor-pointer border-0 p-0 bg-transparent"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-slate-700">Texte</span>
-                                        <div className="flex items-center gap-2">
+                                        <span className="font-pv-jost font-normal text-pv-12 text-pv-white-0/80">Texte</span>
+                                        <div className="flex items-center gap-3">
                                             <input
-                                                type="color"
+                                                type="text"
                                                 value={config.colors?.text}
                                                 onChange={(e) => handleColorChange('text', e.target.value)}
-                                                className="h-8 w-14 rounded cursor-pointer border-0 p-0"
+                                                className="w-20 bg-transparent border-b border-white/10 text-pv-white-0 text-xs font-mono uppercase focus:border-pv-brand-500 outline-none text-right"
                                             />
-                                            <span className="text-xs text-slate-500 w-16 text-right font-mono">{config.colors?.text}</span>
+                                            <div className="relative h-8 w-14 rounded overflow-hidden shadow-inner border border-white/5">
+                                                <input
+                                                    type="color"
+                                                    value={normalizeHex(config.colors?.text || '#1f2937')}
+                                                    onChange={(e) => handleColorChange('text', e.target.value)}
+                                                    className="absolute -inset-1 h-[150%] w-[150%] cursor-pointer border-0 p-0 bg-transparent"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -305,29 +357,29 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
 
                             {/* Borders & Radius */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-900 mb-3">Bordures & Formes</h3>
+                                <h3 className="font-pv-jost font-bold text-[12px] uppercase tracking-wider text-pv-white-0 mb-3">Bordures & Formes</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs font-medium text-slate-700 mb-1">Arrondi (Radius): {config.borders?.radius}</label>
+                                        <label className="block font-pv-jost font-normal text-pv-12 text-pv-white-0/70 mb-1">Arrondi (Radius): {config.borders?.radius}</label>
                                         <input
                                             type="range"
                                             min="0"
                                             max="30"
                                             value={parseInt(config.borders?.radius || '8')}
                                             onChange={(e) => handleBorderChange('radius', `${e.target.value}px`)}
-                                            className="w-full"
+                                            className="w-full accent-pv-brand-500"
                                         />
-                                        <div className="flex justify-between text-xs text-gray-400 px-1">
+                                        <div className="flex justify-between font-pv-jost text-[10px] text-pv-white-0/40 px-1 uppercase tracking-tight">
                                             <span>Carré</span>
                                             <span>Rond</span>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-slate-700 mb-1">Épaisseur bordure</label>
+                                        <label className="block font-pv-jost font-normal text-pv-12 text-pv-white-0/70 mb-1">Épaisseur bordure</label>
                                         <select
                                             value={config.borders?.width}
                                             onChange={(e) => handleBorderChange('width', e.target.value)}
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border text-slate-900"
+                                            className="w-full rounded-md border-white/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 text-pv-16 font-pv-jost p-2 border text-pv-white-0"
                                         >
                                             <option value="0px">Aucune (0px)</option>
                                             <option value="1px">Fine (1px)</option>
@@ -338,12 +390,12 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-slate-200">
-                                <h3 className="text-sm font-bold text-slate-900">Ombres Portées</h3>
+                            <div className="space-y-4 pt-4 border-t border-white/5">
+                                <h3 className="font-pv-jost font-bold text-[12px] uppercase tracking-wider text-pv-white-0">Ombres Portées</h3>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-medium text-slate-700">Style d'ombre</label>
+                                    <label className="font-pv-jost font-normal text-pv-12 text-pv-white-0/70">Style d'ombre</label>
                                     <select
-                                        className="w-full p-2 border border-slate-300 rounded-md text-sm"
+                                        className="w-full rounded-md border-white/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 text-pv-16 font-pv-jost p-2 border text-pv-white-0"
                                         value={config.shadows?.style || 'none'}
                                         onChange={(e) => handleShadowChange('style', e.target.value)}
                                     >
@@ -353,10 +405,10 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-medium text-slate-700">Opacité ({Math.round((config.shadows?.opacity || 0) * 100)}%)</label>
+                                    <label className="font-pv-jost font-normal text-pv-12 text-pv-white-0/70">Opacité ({Math.round((config.shadows?.opacity || 0) * 100)}%)</label>
                                     <input
                                         type="range" min="0" max="1" step="0.1"
-                                        className="w-full"
+                                        className="w-full accent-pv-brand-500"
                                         value={config.shadows?.opacity || 0}
                                         onChange={(e) => handleShadowChange('opacity', parseFloat(e.target.value))}
                                     />
@@ -369,7 +421,7 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="flex items-center justify-center w-full gap-2 rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
+                            className="flex items-center justify-center w-full gap-2 rounded-xl bg-pv-brand-900 border border-pv-brand-500 px-4 py-4 text-sm font-pv-jost font-bold uppercase tracking-widest text-white shadow-lg hover:bg-pv-brand-500 transition-all disabled:opacity-50"
                         >
                             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             Sauvegarder le thème
@@ -377,7 +429,7 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                         <button
                             onClick={handleApplyToProject}
                             disabled={isApplying || !selectedThemeId || selectedThemeId === 'new'}
-                            className="flex items-center justify-center w-full gap-2 rounded-md bg-white border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                            className="flex items-center justify-center w-full gap-2 rounded-xl bg-transparent border border-pv-white-0/20 px-4 py-4 text-sm font-pv-jost font-bold uppercase tracking-widest text-pv-white-0 shadow-sm hover:bg-white/5 transition-all disabled:opacity-50"
                         >
                             {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                             Appliquer à tout le projet
@@ -397,84 +449,73 @@ export function ThemeEditor({ themes: initialThemes, projectId }: ThemeEditorPro
                     </div>
                 </div>
 
-                {/* Right: Preview */}
-                <div className="w-full lg:w-2/3 bg-gray-100/50 rounded-2xl border border-gray-200 overflow-hidden flex flex-col">
-                    <div className="bg-white border-b border-gray-200 p-3 flex items-center justify-between">
-                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Aperçu en direct</span>
-                        <div className="flex gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                            <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
-                        </div>
-                    </div>
+                {/* Right: Preview (Fixed Aspect Ratio) */}
+                <div className="bg-pv-dark-200 w-full lg:w-1/2 overflow-y-auto p-4 lg:p-6 relative flex items-center justify-center rounded-xl">
+                    <div
+                        className="w-full max-w-[400px] min-w-[360px] aspect-[2/3] shadow-2xl rounded-[30px] overflow-y-auto scrollbar-hide border-8 border-gray-900 transition-all duration-300 p-8"
+                        style={previewStyle}
+                    >
+                        {/* Content Skeleton matches PublicPage but simpler */}
+                        <div className="flex flex-col items-center text-center space-y-6 pt-10">
+                            {/* Profile Image Mock */}
+                            <div className="w-24 h-24 rounded-full bg-gray-200 border-4 border-white shadow-sm mb-2"></div>
 
-                    <div className="flex-1 overflow-y-auto p-8 relative">
-                        <div
-                            className="max-w-md mx-auto min-h-[600px] shadow-2xl rounded-[30px] overflow-hidden border-8 border-gray-900 transition-all duration-300 p-8"
-                            style={previewStyle}
-                        >
-                            {/* Content Skeleton matches PublicPage but simpler */}
-                            <div className="flex flex-col items-center text-center space-y-6 pt-10">
-                                {/* Profile Image Mock */}
-                                <div className="w-24 h-24 rounded-full bg-gray-200 border-4 border-white shadow-sm mb-2"></div>
+                            {/* Title */}
+                            <div>
+                                <h2 className="text-2xl font-bold mb-1">Mon Super Projet</h2>
+                                <p className="opacity-80">@mon_handle</p>
+                            </div>
 
-                                {/* Title */}
-                                <div>
-                                    <h2 className="text-2xl font-bold mb-1">Mon Super Projet</h2>
-                                    <p className="opacity-80">@mon_handle</p>
-                                </div>
+                            {/* Separator */}
+                            <hr
+                                className="w-2/3 opacity-50"
+                                style={{
+                                    borderColor: 'var(--pico-secondary)',
+                                    borderStyle: 'var(--pico-divider-style)',
+                                    borderTopWidth: '1px'
+                                }}
+                            />
 
-                                {/* Separator */}
-                                <hr
-                                    className="w-2/3 opacity-50"
+                            {/* Text */}
+                            <p className="opacity-90 leading-relaxed px-4">
+                                Bienvenue sur ma page. Ceci est un aperçu en temps réel de votre thème. Modifiez les couleurs et les formes à gauche pour voir le résultat.
+                            </p>
+
+                            {/* Buttons */}
+                            <div className="w-full space-y-4 pt-4">
+                                <button
+                                    className="w-full py-4 px-6 font-medium shadow-sm transition-transform hover:scale-[1.02]"
                                     style={{
-                                        borderColor: 'var(--secondary)',
-                                        borderStyle: 'var(--divider-style)',
-                                        borderTopWidth: '1px'
+                                        backgroundColor: 'var(--pico-primary)',
+                                        color: 'var(--pico-btn-text)',
+                                        borderRadius: 'var(--pico-radius)',
+                                        borderWidth: 'var(--pico-border-width)',
+                                        borderColor: 'var(--pico-secondary)', // Use secondary
+                                        borderStyle: 'solid',
+                                        boxShadow: 'var(--pico-shadow)'
                                     }}
-                                />
+                                >
+                                    Bouton Principal
+                                </button>
 
-                                {/* Text */}
-                                <p className="opacity-90 leading-relaxed px-4">
-                                    Bienvenue sur ma page. Ceci est un aperçu en temps réel de votre thème. Modifiez les couleurs et les formes à gauche pour voir le résultat.
-                                </p>
+                                <button
+                                    className="w-full py-4 px-6 font-medium shadow-sm transition-transform hover:scale-[1.02]"
+                                    style={{
+                                        backgroundColor: 'transparent',
+                                        color: 'var(--pico-primary)',
+                                        borderRadius: 'var(--pico-radius)',
+                                        borderWidth: 'var(--pico-border-width)',
+                                        borderColor: 'var(--pico-secondary)', // Use secondary
+                                        borderStyle: 'solid',
+                                        boxShadow: 'var(--pico-shadow)'
+                                    }}
+                                >
+                                    Bouton Secondaire (Outline)
+                                </button>
+                            </div>
 
-                                {/* Buttons */}
-                                <div className="w-full space-y-4 pt-4">
-                                    <button
-                                        className="w-full py-4 px-6 font-medium shadow-sm transition-transform hover:scale-[1.02]"
-                                        style={{
-                                            backgroundColor: 'var(--primary)',
-                                            color: 'var(--btn-text)',
-                                            borderRadius: 'var(--border-radius)',
-                                            borderWidth: 'var(--border-width)',
-                                            borderColor: 'var(--secondary)', // Use secondary
-                                            borderStyle: 'solid',
-                                            boxShadow: 'var(--pico-shadow)'
-                                        }}
-                                    >
-                                        Bouton Principal
-                                    </button>
-
-                                    <button
-                                        className="w-full py-4 px-6 font-medium shadow-sm transition-transform hover:scale-[1.02]"
-                                        style={{
-                                            backgroundColor: 'transparent',
-                                            color: 'var(--primary)',
-                                            borderRadius: 'var(--border-radius)',
-                                            borderWidth: 'var(--border-width)',
-                                            borderColor: 'var(--secondary)', // Use secondary
-                                            borderStyle: 'solid',
-                                            boxShadow: 'var(--pico-shadow)'
-                                        }}
-                                    >
-                                        Bouton Secondaire (Outline)
-                                    </button>
-                                </div>
-
-                                <div className="pt-8 text-xs opacity-50">
-                                    <p>Rejoignez-nous sur les réseaux</p>
-                                </div>
+                            <div className="pt-8 text-xs opacity-50">
+                                <p>Rejoignez-nous sur les réseaux</p>
                             </div>
                         </div>
                     </div>

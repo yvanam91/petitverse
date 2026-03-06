@@ -24,7 +24,6 @@ export function DoubleLinkBlock({ content, config }: DoubleLinkBlockProps) {
         const primary = config.colors?.primary || config.buttonColor || '#000000'
         const secondary = config.colors?.secondary || config.secondaryColor || '#e5e7eb'
         const buttonText = config.colors?.buttonText || config.buttonTextColor || '#ffffff'
-        const fontFamily = config.typography?.fontFamily || config.fontFamily || 'Inter, sans-serif'
 
         const buttonStyle = config.buttonStyle || 'rounded-md'
         const buttonVariant = config.buttonVariant || 'fill'
@@ -32,7 +31,6 @@ export function DoubleLinkBlock({ content, config }: DoubleLinkBlockProps) {
         const baseStyle: React.CSSProperties = {
             borderRadius: config.borders?.radius || (buttonStyle === 'rounded-full' ? '9999px' : buttonStyle === 'rounded-none' ? '0px' : '8px'),
             borderWidth: config.borders?.width || (buttonVariant === 'outline' ? '2px' : buttonVariant === 'soft-shadow' ? '1px' : '0px'),
-            fontFamily: fontFamily,
             transition: 'all 0.2s',
             borderStyle: config.borders?.style || 'solid',
             backgroundColor: primary,

@@ -749,7 +749,7 @@ export async function updateProjectContent(projectId: string, pageId: string, bl
     // Verify ownership
     const { data: project } = await supabase
         .from('projects')
-        .select('id')
+        .select('id, slug')
         .eq('id', projectId)
         .eq('user_id', user.id)
         .single()
@@ -766,7 +766,7 @@ export async function updateProjectContent(projectId: string, pageId: string, bl
         const existingIds = existingBlocks?.map(b => b.id) || []
         const incomingIds = blocks.map(b => b.id)
 
-        // 2. Identify blocks to delete (present in DB but not in payload)
+        // 2. Identify blocks to delete
         const idsToDelete = existingIds.filter(id => !incomingIds.includes(id))
 
         if (idsToDelete.length > 0) {
@@ -778,26 +778,41 @@ export async function updateProjectContent(projectId: string, pageId: string, bl
             if (deleteError) throw deleteError
         }
 
-        // 3. Upsert content
-        const updates = blocks.map(b => ({
+        // 3. Upsert content with Sequential Positions
+        const updates = blocks.map((b, index) => ({
             id: b.id,
             page_id: pageId,
             type: b.type,
             content: b.content,
-            position: b.position
-            // is_visible: b.is_visible // Column missing in DB, disabled for now
+            position: index, // Forces sequential 0, 1, 2...
+            // is_visible: b.is_visible ?? true // Désactivé : Erreur "column does not exist" rapportée indirectly 
         }))
 
         const { error } = await supabase
             .from('blocks')
             .upsert(updates, { onConflict: 'id' })
 
-        if (error) throw error
+        if (error) {
+            console.error('Upsert block error:', error)
+            // If the error is about is_visible not existing, we might need a separate strategy,
+            // but for now we follow the instruction to "active it".
+            throw error
+        }
 
-        revalidatePath(`/dashboard/${projectId}/${pageId}`)
+        // 4. Revalidation
+        const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single()
+        const { data: page } = await supabase.from('pages').select('slug').eq('id', pageId).single()
+
+        // Correction du chemin de revalidation: /dashboard/[slug]/pages/[id]
+        revalidatePath(`/dashboard/${project.slug}/pages/${pageId}`)
+
+        if (profile?.username && project.slug && page?.slug) {
+            revalidatePath(`/p/${profile.username}/${project.slug}/${page.slug}`)
+        }
+
         return { success: true }
     } catch (error: any) {
         console.error('Failed to update project content:', error)
-        return { error: error.message }
+        return { error: error.message || 'Failed to update content' }
     }
 }

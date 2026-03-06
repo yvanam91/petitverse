@@ -37,8 +37,8 @@ export default async function ThemesPage({ params }: { params: Promise<{ project
                     </div>
                 </div>
             </header>
-            <main>
-                <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+            <main className="bg-pv-dark-100">
+                <div className="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8 bg-pv-dark-100">
                     <ThemeEditor themes={themes || []} projectId={project.id} />
                 </div>
             </main>

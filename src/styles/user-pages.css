@@ -1,11 +1,13 @@
 @layer components {
+
     /* ========================================================================= */
     /* Container principal                                                       */
     /* ========================================================================= */
     .pico-background {
         background-color: var(--pico-bg);
+        font-family: var(--pico-font), sans-serif;
     }
-    
+
     @media (min-width: 1024px) {
         .pico-background {
             background-color: color-mix(in srgb, var(--pico-primary), black 10%);
@@ -22,14 +24,14 @@
         transition-duration: 300ms;
         padding: 3rem 1rem;
     }
-    
+
     @media (min-width: 640px) {
         .pico-container {
             padding-left: 1.5rem;
             padding-right: 1.5rem;
         }
     }
-    
+
     @media (min-width: 1024px) {
         .pico-container {
             max-width: 480px;
@@ -52,7 +54,7 @@
         width: 100%;
         margin-bottom: 0.5rem;
     }
-    
+
     .pico-text-block {
         color: var(--pico-text);
         width: 100%;
@@ -60,9 +62,17 @@
         margin-bottom: 1rem;
     }
 
-    .pico-text-center { text-align: center; }
-    .pico-text-left { text-align: left; }
-    .pico-text-right { text-align: right; }
+    .pico-text-center {
+        text-align: center;
+    }
+
+    .pico-text-left {
+        text-align: left;
+    }
+
+    .pico-text-right {
+        text-align: right;
+    }
 
     /* ========================================================================= */
     /* Séparateurs et autres éléments globaux                                    */

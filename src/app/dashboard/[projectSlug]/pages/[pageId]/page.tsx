@@ -61,19 +61,19 @@ export default async function EditorPage({
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col h-screen overflow-hidden">
-            <header className="bg-white shadow z-10 shrink-0">
-                <div className="mx-auto w-full px-4 py-4 sm:px-6 lg:px-8 border-b border-gray-200">
+        <div className="min-h-screen pv-dark-100 flex flex-col h-screen overflow-hidden">
+            <header className="pv-dark-0 text-pv-white-0 z-10 shrink-0">
+                <div className="mx-auto w-full px-4 py-pv-20 sm:px-6 lg:px-8 border-b border-gray-100/10">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
                             <Link
                                 href={`/dashboard/${projectSlug}/pages`}
-                                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                                className="inline-flex items-center gap-1 font-pv-inter font-pv-regular text-pv-12 text-pv-white-0 hover:opacity-70 transition-opacity"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Retour
                             </Link>
-                            <h1 className="text-xl font-bold tracking-tight text-gray-900 border-l border-gray-300 pl-4">
+                            <h1 className="font-pv-inter font-pv-bold text-pv-12 text-pv-white-0 border-l border-gray-100/20 pl-4">
                                 {(page as Page).title}
                             </h1>
                         </div>
@@ -81,9 +81,9 @@ export default async function EditorPage({
                             <Link
                                 href={`/p/${username}/${project.slug}/${page.slug}`}
                                 target="_blank"
-                                className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                                className="inline-flex items-center gap-2 rounded-md bg-transparent border border-pv-brand-500 px-3 py-2 text-pv-12 font-pv-inter font-pv-bold text-pv-brand-500 hover:bg-pv-brand-500/10 transition-colors"
                             >
-                                <ExternalLink className="h-4 w-4" />
+                                <ExternalLink className="h-3 w-3" />
                                 Voir en ligne
                             </Link>
                         )}

@@ -1,15 +1,10 @@
 import { createClient } from '@/utils/supabase/server'
 import { notFound, redirect } from 'next/navigation'
-import { slugify } from '@/utils/slugify'
 import type { Project, Page, Block, PageConfig } from '@/types/database'
-import { FileText } from 'lucide-react'
 import { Metadata } from 'next'
-import { HeaderBlock } from '@/components/shared/blocks/HeaderBlock'
-import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
-import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
-import { DoubleLinkBlock } from '@/components/shared/blocks/DoubleLinkBlock'
-import { EmbedBlock } from '@/components/shared/blocks/EmbedBlock'
+import { BlockFactory } from '@/components/shared/BlockFactory'
 import { getBoxShadow } from '@/lib/utils'
+import { fontMap } from '@/styles/fonts'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,7 +91,6 @@ export default async function PublicPage({
     }
 
     // Theme Inheritance Logic (Phase 1 & 3)
-    // Use Global Theme config if available, fallback to local config, or use System Default.
     const DEFAULT_CONFIG: PageConfig = {
         colors: {
             background: '#ffffff',
@@ -106,30 +100,18 @@ export default async function PublicPage({
             link: '#000000',
             buttonText: '#ffffff'
         },
-        typography: { fontFamily: 'Inter, sans-serif' },
+        typography: { fontFamily: 'inter' },
         borders: { radius: '8px', width: '1px', style: 'solid' },
         dividers: { style: 'solid', width: '1px', color: '#e5e7eb' },
         buttonStyle: 'rounded-md',
         buttonVariant: 'fill'
     }
 
-    // FALLBACK LOGIC: 
-    // 1. Page Specific Theme
-    // 2. Page Specific Config (Legacy or Override) - *Actually usually we want Theme > Config? Or Config > Theme?*
-    //    User said: "si la page.config est vide ou si page.theme_id est nul, utiliser config du default_theme_id"
-    //    So priority: Page Theme > Page Config (if not empty) > Projects Default Theme > System Default
-
     let themeConfig = page.theme?.config || page.config
 
-    // Check if empty object (Supabase currently defaults jsonb to {} sometimes?)
     const isConfigEmpty = !themeConfig || (typeof themeConfig === 'object' && Object.keys(themeConfig).length === 0)
 
     if (isConfigEmpty && !page.theme_id && data.project.default_theme_id) {
-        // Fetch Project Default Theme if not already available
-        // Optimization: We could have fetched this in getPageData, but let's do it lazily or pre-fetch.
-        // Since this is a server component, we can just fetch it here if needed.
-        // IMPROVEMENT: Let's modify getPageData to fetch it to avoid waterfall if possible, 
-        // OR just fetch it here.
         const supabase = await createClient()
         const { data: defaultTheme } = await supabase
             .from('themes')
@@ -144,8 +126,6 @@ export default async function PublicPage({
 
     const effectiveConfig = (themeConfig || DEFAULT_CONFIG) as PageConfig
 
-    // Helper removed, using import from utils
-
     // Dynamic Style Injection
     const themeStyles = {
         '--pico-bg': effectiveConfig.colors?.background || DEFAULT_CONFIG.colors!.background,
@@ -154,9 +134,8 @@ export default async function PublicPage({
         '--pico-text': effectiveConfig.colors?.text || DEFAULT_CONFIG.colors!.text,
         '--pico-link': effectiveConfig.colors?.link || DEFAULT_CONFIG.colors!.link,
         '--pico-btn-text': effectiveConfig.colors?.buttonText || DEFAULT_CONFIG.colors!.buttonText,
-        '--pico-font': effectiveConfig.typography?.fontFamily || DEFAULT_CONFIG.typography!.fontFamily,
+        '--pico-font': fontMap[effectiveConfig.typography?.fontFamily || 'inter'] || 'var(--font-inter)',
 
-        // New Phase 1 Variables
         '--pico-radius': effectiveConfig.borders?.radius || '8px',
         '--pico-border-width': effectiveConfig.borders?.width || '1px',
         '--pico-divider-style': effectiveConfig.dividers?.style || 'solid',
@@ -172,134 +151,33 @@ export default async function PublicPage({
     } as React.CSSProperties
 
     return (
-        <>
-            <div style={themeStyles} className="pico-background min-h-screen w-full flex flex-col justify-center lg:py-8 transition-colors duration-300">
-                <div className="pico-container">
-                    {/* Blocks Rendering */}
-                    <div className="space-y-6">
-                        {blocks?.sort((a, b) => a.position - b.position).map((block) => {
-                            if (block.is_visible === false) return null
+        <div style={themeStyles} className="pico-background min-h-screen w-full flex flex-col justify-center lg:py-8 transition-colors duration-300">
+            <div className="pico-container">
+                {/* Blocks Rendering */}
+                <div className="space-y-6">
+                    {blocks?.sort((a, b) => a.position - b.position).map((block) => {
+                        if (block.is_visible === false) return null
 
-                            // Grid Width Class
-                            const widthClass = block.content.width === 'half' ? 'w-[calc(50%-0.5rem)]' : 'w-full'
+                        const widthClass = block.content.width === 'half' ? 'w-[calc(50%-0.5rem)]' : 'w-full'
 
-                            // Specific wrapper for width
-                            const content = (() => {
-                                switch (block.type) {
-                                    case 'header':
-                                        return <HeaderBlock content={block.content as any} config={effectiveConfig} />
-
-                                    case 'social_grid':
-                                        return <SocialGridBlock content={block.content as any} config={effectiveConfig} />
-
-                                    case 'separator':
-                                        return <hr className="pico-separator" />
-
-                                    case 'title':
-                                        return (
-                                            <h2 className={`pico-title ${block.content.align === 'center' ? 'pico-text-center' : block.content.align === 'right' ? 'pico-text-right' : 'pico-text-left'}`}>
-                                                {block.content.title}
-                                            </h2>
-                                        )
-
-                                    case 'text':
-                                        return (
-                                            <div className="pico-text-block">
-                                                {block.content.text}
-                                            </div>
-                                        )
-
-                                    case 'double-link':
-                                        return <DoubleLinkBlock content={block.content as any} config={effectiveConfig} />
-
-                                    case 'hero':
-                                        return (
-                                            <div className="w-full flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-2xl shadow-sm my-4">
-                                                {block.content.url && (
-                                                    <div className="w-full md:w-1/2">
-                                                        <img
-                                                            src={block.content.url}
-                                                            alt={block.content.title}
-                                                            className="w-full h-64 object-cover rounded-xl shadow-sm"
-                                                        />
-                                                    </div>
-                                                )}
-                                                <div className={`w-full ${block.content.url ? 'md:w-1/2' : ''} flex flex-col gap-3 text-center md:text-left`}>
-                                                    <h2 className="text-2xl md:text-3xl font-bold leading-tight" style={{ color: '#1f2937' }}>
-                                                        {block.content.title}
-                                                    </h2>
-                                                    <p className="leading-relaxed whitespace-pre-wrap opacity-80" style={{ color: '#4b5563' }}>
-                                                        {block.content.text}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )
-
-                                    case 'link':
-                                        return <LinkBlock content={block.content as any} config={effectiveConfig} />
-
-                                    case 'embed':
-                                        return <EmbedBlock content={block.content as any} config={effectiveConfig} />
-
-                                    case 'file':
-                                        return (
-                                            <a
-                                                href={block.content.url}
-                                                download
-                                                className="group flex w-full items-center gap-4 rounded-lg bg-white/90 p-4 shadow-sm ring-1 ring-gray-200 transition-all hover:ring-2 hover:ring-indigo-500 backdrop-blur-sm"
-                                            >
-                                                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-                                                    <FileText className="h-6 w-6" />
-                                                </div>
-                                                <div className="flex-1 overflow-hidden">
-                                                    <p className="truncate font-medium text-gray-900">
-                                                        {block.content.title || 'Document'}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">
-                                                        Télécharger le fichier
-                                                    </p>
-                                                </div>
-                                            </a>
-                                        )
-
-                                    case 'image':
-                                        return (
-                                            <div className="w-full">
-                                                <img
-                                                    src={block.content.url}
-                                                    alt={block.content.title || 'Image'}
-                                                    className="w-full h-auto rounded-lg shadow-sm"
-                                                    style={{ maxHeight: '500px', objectFit: 'contain' }}
-                                                />
-                                            </div>
-                                        )
-
-                                    default:
-                                        return null
-                                }
-                            })()
-
-                            if (!content) return null
-
-                            return (
-                                <div key={block.id} className={widthClass}>
-                                    {content}
-                                </div>
-                            )
-                        })}
-
-                        {blocks && blocks.length === 0 && (
-                            <div className="text-center text-gray-500 py-10 w-full">
-                                Cette page est vide pour le moment.
+                        return (
+                            <div key={block.id} className={widthClass}>
+                                <BlockFactory block={block} config={effectiveConfig} />
                             </div>
-                        )}
-                    </div>
+                        )
+                    })}
 
-                    <footer className="text-center py-6 text-sm text-gray-400 opacity-60">
-                        Propulsé par Picoverse
-                    </footer>
+                    {blocks && blocks.length === 0 && (
+                        <div className="text-center text-gray-500 py-10 w-full">
+                            Cette page est vide pour le moment.
+                        </div>
+                    )}
                 </div>
             </div>
-        </>
+
+            <footer className="text-center py-6 text-sm text-gray-400 opacity-60">
+                Propulsé par Picoverse
+            </footer>
+        </div>
     )
 }

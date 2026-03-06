@@ -18,20 +18,8 @@ export interface Block {
     page_id: string
 }
 
-export interface PageConfig {
-    // Legacy support (to be deprecated)
-    backgroundColor?: string
-    buttonColor?: string
-    buttonTextColor?: string
-    buttonStyle?: 'rounded-none' | 'rounded-md' | 'rounded-full'
-    buttonVariant?: 'fill' | 'outline' | 'soft-shadow'
-    fontFamily?: string
-    secondaryColor?: string
-    textColor?: string
-    linkColor?: string
-    headerBackgroundImage?: string
-
-    // Phase 1 New Structure
+export interface ThemeConfig {
+    // Phase 1 & 3 Structure
     colors?: {
         background: string
         primary: string
@@ -57,13 +45,30 @@ export interface PageConfig {
         style: 'none' | 'hard' | 'soft'
         opacity: number // de 0 à 1
     }
+    spacing?: {
+        containerPadding: string
+        blockGap: string
+    }
+    // Legacy support (to be deprecated gradually)
+    backgroundColor?: string
+    buttonColor?: string
+    buttonTextColor?: string
+    buttonStyle?: 'rounded-none' | 'rounded-md' | 'rounded-full'
+    buttonVariant?: 'fill' | 'outline' | 'soft-shadow'
+    fontFamily?: string
+    secondaryColor?: string
+    textColor?: string
+    linkColor?: string
+    headerBackgroundImage?: string
     [key: string]: any
 }
+
+export type PageConfig = ThemeConfig // Alias for transition period
 
 export interface Theme {
     id: string
     name: string
-    config: PageConfig
+    config: ThemeConfig
     user_id: string
     project_id: string
     created_at: string
@@ -79,7 +84,7 @@ export type Page = {
     description?: string
     is_published?: boolean
     meta_title?: string
-    config?: PageConfig
+    config?: ThemeConfig
     theme?: Theme
     blocks?: Block[]
 }

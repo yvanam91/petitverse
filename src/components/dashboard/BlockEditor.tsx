@@ -29,9 +29,11 @@ import { SocialGridBlock } from '@/components/shared/blocks/SocialGridBlock'
 import { LinkBlock } from '@/components/shared/blocks/LinkBlock'
 import { DoubleLinkBlock } from '@/components/shared/blocks/DoubleLinkBlock'
 import { EmbedBlock } from '@/components/shared/blocks/EmbedBlock'
+import { BlockFactory } from '../shared/BlockFactory'
 import type { Block, PageConfig } from '@/types/database'
 import { getEmbedUrl } from '@/lib/embed-utils'
 import { createClient } from '@/utils/supabase/client'
+import { fontMap } from '@/styles/fonts'
 import ClientOnly from '@/components/ClientOnly'
 import { toast } from 'sonner'
 import { ComponentPicker } from './ComponentPicker'
@@ -118,14 +120,14 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                                     value={link.label || ''}
                                     onChange={(e) => updateLink(index, 'label', e.target.value)}
                                     placeholder={`Titre du lien ${index + 1}`}
-                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border mb-2"
+                                    className="block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border mb-2 placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                                 />
                                 <input
                                     type="url"
                                     value={link.url || ''}
                                     onChange={(e) => updateLink(index, 'url', e.target.value)}
                                     placeholder="https://..."
-                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                                    className="block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                                 />
                             </div>
                         </div>
@@ -189,14 +191,14 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                     value={block.content.title || ''} // Direct edit for header usually
                     onChange={(e) => onUpdateContent({ ...block.content, title: e.target.value })}
                     placeholder="Votre Nom / Titre"
-                    className="text-xl font-bold text-center bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none text-gray-900 placeholder:text-gray-400 w-full"
+                    className="text-xl font-bold text-center bg-transparent border-b border-transparent focus:border-pv-brand-500 focus:outline-none text-pv-white-0 placeholder:text-pv-white-0/80 focus:placeholder-transparent w-full"
                 />
                 <input
                     type="text"
                     value={block.content.subtitle || ''} // Subtitle for Bio
                     onChange={(e) => onUpdateContent({ ...block.content, subtitle: e.target.value })}
                     placeholder="Votre Bio / Sous-titre"
-                    className="text-sm text-center bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none text-gray-500 placeholder:text-gray-300 w-full"
+                    className="text-sm text-center bg-transparent border-b border-transparent focus:border-pv-brand-500 focus:outline-none text-pv-white-0/60 placeholder:text-pv-white-0/40 focus:placeholder-transparent w-full"
                 />
             </div>
         )
@@ -253,7 +255,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                                         value={link.url || ''}
                                         onChange={(e) => updateLink(index, 'url', e.target.value)}
                                         placeholder="https://..."
-                                        className="w-full bg-white border border-gray-300 rounded text-xs p-1 text-gray-900 outline-none"
+                                        className="w-full bg-pv-dark-100 border border-gray-100/10 rounded text-xs p-1 text-pv-white-0 outline-none focus:ring-1 focus:ring-pv-brand-500 placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                                     />
                                 </div>
                             </div>
@@ -280,17 +282,17 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
     const renderTitleBlock = () => (
         <div className="space-y-3">
             <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Titre</label>
+                <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide">Titre</label>
                 <input
                     type="text"
                     value={block.content.title || ''}
                     onChange={(e) => onUpdateContent({ ...block.content, title: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border font-bold text-lg"
+                    className="mt-1 block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border font-bold text-lg placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                     placeholder="Grand Titre"
                 />
             </div>
             <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Alignement</label>
+                <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide">Alignement</label>
                 <div className="flex gap-2 mt-1">
                     {['left', 'center', 'right'].map((align) => (
                         <button
@@ -310,12 +312,12 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
 
     const renderTextBlock = () => (
         <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Texte</label>
+            <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide mb-1">Texte</label>
             <textarea
                 value={block.content.text || ''}
                 onChange={(e) => onUpdateContent({ ...block.content, text: e.target.value })}
                 rows={4}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                className="block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                 placeholder="Écrivez votre texte ici..."
             />
         </div>
@@ -399,22 +401,22 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                 />
             </div>
             <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Titre</label>
+                <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide">Titre</label>
                 <input
                     type="text"
                     value={block.content.title || ''}
                     onChange={(e) => onUpdateContent({ ...block.content, title: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border font-bold"
+                    className="mt-1 block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border font-bold placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                     placeholder="Titre accrocheur"
                 />
             </div>
             <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Description</label>
+                <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide">Description</label>
                 <textarea
                     value={block.content.text || ''}
                     onChange={(e) => onUpdateContent({ ...block.content, text: e.target.value })}
                     rows={3}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                    className="mt-1 block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                     placeholder="Texte descriptif..."
                 />
             </div>
@@ -497,12 +499,12 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
 
                     {/* Meta Fields */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Titre / Légende</label>
+                        <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide">Titre / Légende</label>
                         <input
                             type="text"
                             value={block.content.title || ''}
                             onChange={(e) => onUpdateContent({ ...block.content, title: e.target.value })}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                            className="mt-1 block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                             placeholder={block.type === 'image' ? "Légende de l'image" : "Nom du fichier"}
                         />
                     </div>
@@ -513,22 +515,22 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
         return (
             <div className="space-y-3">
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Titre du bouton</label>
+                    <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide">Titre du bouton</label>
                     <input
                         type="text"
                         value={(isEditing ? editState.title : block.content.title) || ''}
                         onChange={(e) => onEditChange('title', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                        className="mt-1 block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                         placeholder="Mon super lien"
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">URL</label>
+                    <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide">URL</label>
                     <input
                         type="url"
                         value={(isEditing ? editState.url : block.content.url) || ''}
                         onChange={(e) => onEditChange('url', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-gray-900 p-2 border"
+                        className="mt-1 block w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm text-pv-white-0 p-2 border placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                         placeholder="https://..."
                     />
                 </div>
@@ -540,30 +542,28 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
         <div
             ref={setNodeRef}
             style={style}
-            className={`group relative flex gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-all ${deleting ? 'opacity-50' : ''} ${!block.is_visible ? 'opacity-75 bg-gray-50' : ''}`}
+            className={`block-added group relative flex gap-4 rounded-lg p-4 transition-all bg-pv-dark-200 text-pv-white-0 ${block.is_visible !== false ? 'bloc-active' : 'block-hidden opacity-60'} ${deleting ? 'opacity-50' : ''}`}
         >
             <div
                 {...attributes}
                 {...listeners}
-                className="flex cursor-grab active:cursor-grabbing flex-col justify-center text-gray-300 hover:text-gray-600 touch-none"
+                className="flex cursor-grab active:cursor-grabbing flex-col justify-center text-pv-white-0/40 hover:text-pv-white-0 hover:bg-pv-white-0/10 rounded-md p-1 transition-all touch-none"
             >
                 <GripVertical className="h-5 w-5" />
             </div>
 
             <div className="flex-1 min-w-0">
-                {/* Block Label Badge */}
-                <div className="mb-2 flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-sm bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10 uppercase">
+                {/* Block Label */}
+                <div className="mb-4 flex items-center gap-2">
+                    <span className="font-pv-jost font-pv-regular text-pv-16 text-pv-white-0">
                         {block.type.replace('_', ' ')}
                     </span>
                     {block.is_visible === false && (
-                        <span className="inline-flex items-center rounded-sm bg-yellow-50 px-1.5 py-0.5 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-                            Masqué
+                        <span className="font-pv-jost font-pv-regular text-pv-16 text-pv-white-0/40">
+                            (Masqué)
                         </span>
                     )}
                 </div>
-
-                {/* Grid Width Toggle Removed */}
 
                 {block.type === 'header' && renderHeaderBlock()}
                 {block.type === 'social_grid' && renderSocialGrid()}
@@ -579,7 +579,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
             <div className="flex flex-col items-end gap-2">
                 <button
                     onClick={onToggleVisibility}
-                    className={`rounded-md p-1.5 transition-colors ${!block.is_visible ? 'text-gray-400 hover:text-gray-600' : 'text-indigo-400 hover:text-indigo-600'}`}
+                    className={`rounded-md p-1.5 transition-colors hover:bg-pv-white-0/10 ${!block.is_visible ? 'text-pv-white-0/40 hover:text-pv-white-0' : 'text-pv-brand-500/70 hover:text-pv-brand-500'}`}
                     title={block.is_visible !== false ? "Masquer" : "Afficher"}
                 >
                     {block.is_visible !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -588,7 +588,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                 <button
                     onClick={onDelete}
                     disabled={deleting}
-                    className="rounded-md p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                    className="rounded-md p-1.5 text-pv-white-0/40 hover:text-pv-accent-red hover:bg-pv-white-0/10 transition-colors"
                     title="Supprimer"
                 >
                     {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
@@ -598,7 +598,7 @@ function SortableBlock({ block, isEditing, editState, onEditChange, onSave, onDe
                     <button
                         onClick={onSave}
                         disabled={editState.loading}
-                        className="rounded-md bg-indigo-50 p-1.5 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+                        className="rounded-md bg-pv-brand-500/20 p-1.5 text-pv-brand-500 hover:bg-pv-brand-500/30 disabled:opacity-50"
                         title="Enregistrer"
                     >
                         {editState.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -928,7 +928,7 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                 link: '#000000',
                 buttonText: '#ffffff'
             },
-            typography: { fontFamily: 'Inter, sans-serif' },
+            typography: { fontFamily: 'inter' },
             borders: { radius: '8px', width: '1px', style: 'solid' },
             dividers: { style: 'solid', width: '1px', color: '#e5e7eb' },
             buttonStyle: 'rounded-md',
@@ -957,10 +957,20 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
         )
 
         const containerStyle: React.CSSProperties = {
-            backgroundColor: getBackground(),
-            fontFamily: getFont(),
-            color: getText(),
+            '--pico-bg': getBackground(),
+            '--pico-primary': effectiveThemeConfig.colors?.primary || DEFAULT_THEME_CONFIG.colors!.primary,
+            '--pico-secondary': effectiveThemeConfig.colors?.secondary || DEFAULT_THEME_CONFIG.colors!.secondary,
+            '--pico-text': getText(),
+            '--pico-link': effectiveThemeConfig.colors?.link || DEFAULT_THEME_CONFIG.colors!.link,
+            '--pico-btn-text': effectiveThemeConfig.colors?.buttonText || DEFAULT_THEME_CONFIG.colors!.buttonText,
+            '--pico-font': fontMap[getFont()] || 'var(--font-inter)',
+            '--pico-radius': effectiveThemeConfig.borders?.radius || '8px',
+            '--pico-border-width': effectiveThemeConfig.borders?.width || '1px',
+            '--pico-divider-style': effectiveThemeConfig.dividers?.style || 'solid',
             '--pico-shadow': boxShadow,
+            backgroundColor: 'var(--pico-bg)',
+            color: 'var(--pico-text)',
+            fontFamily: 'var(--pico-font)',
         } as React.CSSProperties
 
         const headerBg = effectiveThemeConfig.headerBackgroundImage
@@ -979,53 +989,17 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                 )}
 
                 <div className={`h-full w-full p-6 flex flex-col gap-4 relative z-10 ${headerBg ? 'text-white' : ''}`}>
-                    {/* Preview blocks should follow visibility */}
                     {blocks.filter(b => b.is_visible !== false).map(block => (
                         <div key={block.id} className="w-full">
-                            {block.type === 'header' && <HeaderBlock content={block.content as any} config={effectiveThemeConfig} />}
-
-                            {block.type === 'social_grid' && <SocialGridBlock content={block.content as any} config={effectiveThemeConfig} />}
-
-                            {block.type === 'separator' && <hr className="border-t border-dashed my-4" style={{ borderColor: getSecondary() }} />}
-
-                            {block.type === 'title' && (
-                                <h2 className={`font-bold text-lg mb-2 ${headerBg ? 'text-white' : ''} ${block.content.align === 'center' ? 'text-center' : block.content.align === 'right' ? 'text-right' : 'text-left'}`} style={{ color: headerBg ? '#ffffff' : getText() }}>
-                                    {block.content.title}
-                                </h2>
-                            )}
-
-                            {block.type === 'text' && (
-                                <p className={`text-sm whitespace-pre-wrap mb-2 ${headerBg ? 'text-white/90' : ''}`} style={{ color: headerBg ? 'rgba(255,255,255,0.9)' : getText() }}>
-                                    {block.content.text}
-                                </p>
-                            )}
-
-                            {block.type === 'hero' && (
-                                <div className="flex flex-col gap-3 rounded-lg overflow-hidden border border-gray-200 pb-3 bg-white">
-                                    {block.content.url && <img src={block.content.url} className="w-full h-32 object-cover" />}
-                                    <div className="px-3">
-                                        <h3 className="font-bold text-gray-900">{block.content.title}</h3>
-                                        <p className="text-xs text-gray-600 mt-1">{block.content.text}</p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {block.type === 'link' && <LinkBlock content={block.content as any} config={effectiveThemeConfig} />}
-
-                            {block.type === 'double-link' && <DoubleLinkBlock content={block.content as any} config={effectiveThemeConfig} />}
-
-                            {block.type === 'embed' && <EmbedBlock content={block.content as any} config={effectiveThemeConfig} />}
-
-                            {block.type === 'image' && <img src={block.content.url} className="w-full rounded-lg shadow-sm" />}
-
-                            {block.type === 'file' && (
-                                <a href={block.content.url} download className="flex items-center gap-3 p-3 bg-white/90 rounded-lg shadow-sm border border-gray-200/50">
-                                    <FileText className="h-5 w-5 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-900 truncate">{block.content.title}</span>
-                                </a>
-                            )}
+                            <BlockFactory block={block} config={effectiveThemeConfig} />
                         </div>
                     ))}
+
+                    {blocks.filter(b => b.is_visible !== false).length === 0 && (
+                        <div className="text-center text-pv-white-0/40 py-10 w-full text-xs">
+                            Cette page est vide pour le moment.
+                        </div>
+                    )}
                 </div>
             </div>
         )
@@ -1035,14 +1009,20 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
 
     return (
         <div className="flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-12rem)]">
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 space-y-6 bg-pv-dark-0 rounded-pv-8 p-6">
                 {/* Tabs */}
                 <div className="border-b border-gray-200">
                     <nav className="-mb-px flex space-x-8">
-                        <button onClick={() => setActiveTab('content')} className={`${activeTab === 'content' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500'} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2`}>
+                        <button
+                            onClick={() => setActiveTab('content')}
+                            className={`${activeTab === 'content' ? 'border-pv-brand-500 text-pv-brand-500' : 'border-transparent text-gray-500'} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2 hover:text-pv-brand-500 focus:outline-none focus:text-pv-brand-500 focus:border-pv-brand-500 transition-colors`}
+                        >
                             <LayoutTemplate className="h-4 w-4" /> Contenu
                         </button>
-                        <button onClick={() => setActiveTab('settings')} className={`${activeTab === 'settings' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500'} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2`}>
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={`${activeTab === 'settings' ? 'border-pv-brand-500 text-pv-brand-500' : 'border-transparent text-gray-500'} whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium flex items-center gap-2 hover:text-pv-brand-500 focus:outline-none focus:text-pv-brand-500 focus:border-pv-brand-500 transition-colors`}
+                        >
                             <Settings2 className="h-4 w-4" /> Réglages
                         </button>
                     </nav>
@@ -1053,12 +1033,12 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                         {/* Add Button */}
                         <button
                             onClick={() => setIsPickerOpen(true)}
-                            className="w-full py-4 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center gap-2 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all group"
+                            className="w-full py-4 border-2 border-dashed border-pv-brand-900 rounded-xl flex items-center justify-center gap-2 text-pv-brand-900 bg-transparent hover:opacity-80 transition-all group"
                         >
-                            <div className="h-8 w-8 rounded-full bg-gray-100 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
-                                <Plus className="h-5 w-5" />
+                            <div className="h-8 w-8 rounded-full bg-pv-gradient-strong group-hover:bg-pv-gradient-soft flex items-center justify-center border border-pv-brand-900 transition-all">
+                                <Plus className="h-5 w-5 text-pv-brand-900" />
                             </div>
-                            <span className="font-medium">Ajouter un composant</span>
+                            <span className="font-medium">Ajouter un bloc</span>
                         </button>
 
                         {/* Components List */}
@@ -1094,12 +1074,16 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                                         ))}
                                     </div>
                                 </SortableContext>
-                                <DragOverlay>
+                                <DragOverlay dropAnimation={null}>
                                     {activeId && blocks.find(b => b.id === activeId) ? (
-                                        <div className="p-4 bg-white rounded-lg shadow-xl border-2 border-indigo-500 opacity-90 cursor-grabbing">
+                                        <div className="p-4 bg-pv-dark-200 rounded-lg shadow-2xl border border-pv-brand-500/50 opacity-95 cursor-grabbing scale-105 transition-transform">
                                             <div className="flex items-center gap-4">
-                                                <GripVertical className="h-5 w-5 text-indigo-600" />
-                                                <span className="font-medium text-gray-900">Déplacement...</span>
+                                                <div className="p-1 bg-pv-white-0/10 rounded">
+                                                    <GripVertical className="h-5 w-5 text-pv-brand-500" />
+                                                </div>
+                                                <span className="font-pv-jost font-pv-regular text-pv-16 text-pv-white-0 uppercase">
+                                                    Déplacement : {blocks.find(b => b.id === activeId)?.type.replace('_', ' ')}
+                                                </span>
                                             </div>
                                         </div>
                                     ) : null}
@@ -1125,35 +1109,35 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                 )}
 
                 {activeTab === 'settings' && (
-                    <div className="space-y-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="space-y-8 bg-pv-dark-200 p-6 rounded-lg shadow-sm border border-gray-200">
                         {/* Publication Status */}
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <Globe className="h-4 w-4 text-indigo-500" />
+                        <div className="bg-pv-dark-100 p-4 rounded-lg border border-gray-100/10">
+                            <h3 className="text-sm font-semibold text-pv-white-0 mb-3 flex items-center gap-2">
+                                <Globe className="h-4 w-4 text-pv-brand-500" />
                                 Publication
                             </h3>
                             <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-gray-700">Publier la page</span>
+                                <span className="text-sm text-pv-white-0">Publier la page</span>
                                 <button
                                     onClick={() => setIsPublished(!isPublished)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isPublished ? 'bg-green-500' : 'bg-gray-200'}`}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pv-brand-500 focus:ring-offset-2 ${isPublished ? 'bg-green-500' : 'bg-pv-dark-200'}`}
                                 >
                                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isPublished ? 'translate-x-6' : 'translate-x-1'}`} />
                                 </button>
                             </div>
-                            <p className="text-xs text-gray-500 text-justify leading-relaxed">
+                            <p className="text-xs text-pv-white-0/40 text-justify leading-relaxed">
                                 Si cette page est dépubliée, elle ne sera plus accessible et les visiteurs seront redirigés vers la page d'accueil de Picoverse.
                             </p>
                         </div>
 
                         {/* SEO Settings */}
                         <div>
-                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                <Type className="h-4 w-4 text-indigo-500" />
+                            <h3 className="text-sm font-semibold text-pv-white-0 mb-3 flex items-center gap-2">
+                                <Type className="h-4 w-4 text-pv-brand-500" />
                                 SEO & Métadonnées
                             </h3>
                             <div>
-                                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                                <label className="block text-xs font-medium text-pv-white-0 uppercase tracking-wide mb-1">
                                     Meta Titre
                                 </label>
                                 <input
@@ -1161,9 +1145,9 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
                                     value={metaTitle}
                                     onChange={(e) => setMetaTitle(e.target.value)}
                                     placeholder="Titre dans l'onglet du navigateur"
-                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                                    className="w-full rounded-md border-gray-100/10 bg-pv-dark-100 shadow-sm focus:border-pv-brand-500 focus:ring-pv-brand-500 sm:text-sm p-2 border text-pv-white-0 placeholder:text-pv-white-0/80 focus:placeholder-transparent"
                                 />
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-pv-white-0/40 mt-1">
                                     Si vide, le titre de la page sera utilisé.
                                 </p>
                             </div>
@@ -1171,13 +1155,13 @@ export function BlockEditor({ projectId, pageId, initialBlocks, initialConfig, i
 
                         {/* Legacy Header Background Image (Kept as requested) */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-medium text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                            <h3 className="text-sm font-medium text-pv-white-0 uppercase tracking-wider flex items-center gap-2">
                                 <ImageIcon className="h-4 w-4" /> Image d&apos;en-tête (Optionnel)
                             </h3>
 
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 text-sm text-gray-600">
+                                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-gray-100/10 rounded-md cursor-pointer hover:bg-pv-dark-100 text-sm text-pv-white-0">
                                         <Upload className="h-4 w-4" />
                                         <span>{config.headerBackgroundImage ? 'Changer l\'image' : 'Uploader une image'}</span>
                                         <input type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={handleHeaderBgUpload} />

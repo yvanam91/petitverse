@@ -4,6 +4,8 @@ import "./globals.css";
 import { Toaster } from 'sonner';
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
+import { fontVariables } from "@/styles/fonts";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -25,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Google Tag Manager */}
         <script
@@ -40,7 +42,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Google Tag Manager */}
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${fontVariables} antialiased`}
       >
         {/* Google Tag Manager (noscript) */}
         <noscript>

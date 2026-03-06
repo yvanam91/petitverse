@@ -11,10 +11,8 @@ interface HeaderBlockProps {
 
 export function HeaderBlock({ content, config }: HeaderBlockProps) {
     const textColor = config.colors?.text || config.textColor || '#1f2937'
-    const fontFamily = config.typography?.fontFamily || config.fontFamily || 'Inter, sans-serif'
-
     return (
-        <div className="text-center mb-6 w-full" style={{ fontFamily }}>
+        <div className="text-center mb-6 w-full">
             {content.url && (
                 <div className="relative w-28 h-28 mx-auto mb-4">
                     <img

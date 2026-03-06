@@ -37,7 +37,7 @@ export function PricingSection() {
                     </div>
                     <Link
                         href="/signup"
-                        className="mt-6 block rounded-md py-2 px-3 text-center text-sm font-semibold leading-6 bg-zinc-100 text-[var(--foreground)] hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 transition-colors"
+                        className="mt-6 block pv-primary"
                     >
                         S'inscrire
                     </Link>
@@ -80,12 +80,11 @@ export function PricingSection() {
                         <span className="text-4xl font-bold tracking-tight text-[var(--foreground)]">5 €</span>
                         <span className="text-sm font-semibold leading-6 text-zinc-600 dark:text-zinc-400">/mois</span>
                     </div>
-                    <Link
-                        href="/signup"
-                        className="mt-6 block rounded-md py-2 px-3 text-center text-sm font-semibold leading-6 bg-[var(--primary)] text-white hover:opacity-90 transition-opacity shadow-sm"
+                    <div
+                        className="mt-6 block pv-deactivated text-center"
                     >
-                        Commencer maintenant
-                    </Link>
+                        Bientôt disponible
+                    </div>
                     <ul role="list" className="mt-8 space-y-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300 xl:mt-10">
                         {FEATURES.map((feature) => (
                             <li key={feature.name} className="flex gap-x-3">
