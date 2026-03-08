@@ -3,6 +3,11 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { resend } from '@/lib/resend'
+import { WelcomeEmail } from '../../../emails/welcomeEmail'
+import { ResetPasswordEmail } from '../../../emails/resetPasswordEmail'
+import { createAdminClient } from '@/utils/supabase/admin'
+
 
 export async function signOut() {
     const supabase = await createClient()
@@ -228,6 +233,19 @@ export async function signUp(prevState: SignupState, formData: FormData): Promis
         return { error: error.message }
     }
 
+    // Envoi de l'e-mail de bienvenue via Resend
+    try {
+        await resend.emails.send({
+            from: process.env.NEXT_PUBLIC_EMAIL_FROM || 'Picoverse <onboarding@resend.dev>',
+            to: email,
+            subject: "Bienvenue dans l'univers Picoverse 🚀",
+            react: WelcomeEmail({ firstName: rawUsername }),
+        });
+    } catch (emailError) {
+        // On log l'erreur mais on ne bloque pas l'inscription
+        console.error('Erreur lors de l\'envoi de l\'e-mail de bienvenue:', emailError);
+    }
+
 
     // Set recognized cookie
     const cookieStore = await cookies()
@@ -279,3 +297,81 @@ export async function signIn(prevState: { error?: string }, formData: FormData) 
     redirect('/dashboard')
 }
 
+
+// --- FORGOT & RESET PASSWORD ---
+
+export async function forgotPassword(prevState: any, formData: FormData) {
+    const email = formData.get('email') as string
+    if (!email) return { error: 'Email requis' }
+
+    const supabase = await createClient()
+    const admin = createAdminClient()
+
+    // 1. Get user profile
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('email', email)
+        .single()
+
+    const firstName = profile?.full_name || 'Aventurier'
+
+    // 2. Generate link
+    const { data, error } = await admin.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
+    })
+
+    if (error) {
+        // En cas d'erreur (ex: utilisateur non trouvé), on renvoie quand même un succès
+        // pour éviter la découverte d'emails (security best practice).
+        return { success: true, message: 'Surveille tes mails, tu recevras vite un lien pour modifier ton mot de passe si un compte est associé à cette adresse' }
+    }
+
+    // Lien robuste pour Next.js utilisant le token_hash
+    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/confirm?token_hash=${data.properties.hashed_token}&type=recovery&next=/auth/reset-password`
+
+    // 3. Send via Resend
+    try {
+        await resend.emails.send({
+            from: process.env.NEXT_PUBLIC_EMAIL_FROM || 'Picoverse <onboarding@resend.dev>',
+            to: email,
+            subject: "Réinitialisation de ton mot de passe Picoverse 🔒",
+            react: ResetPasswordEmail({
+                firstName,
+                resetLink: resetLink
+            }),
+        });
+    } catch (err) {
+        console.error('Error sending reset email:', err)
+    }
+
+    return { success: true, message: 'Surveille tes mails, tu recevras vite un lien pour modifier ton mot de passe si un compte est associé à cette adresse' }
+}
+
+export async function resetPassword(prevState: any, formData: FormData) {
+    const password = formData.get('password') as string
+    const confirmPassword = formData.get('confirmPassword') as string
+
+    if (!password || !confirmPassword) {
+        return { error: 'Tous les champs sont requis' }
+    }
+
+    if (password !== confirmPassword) {
+        return { error: 'Les mots de passe ne correspondent pas' }
+    }
+
+    // Password strength check
+    if (password.length < 10) {
+        return { error: 'Le mot de passe doit faire au moins 10 caractères' }
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase.auth.updateUser({ password })
+
+    if (error) {
+        return { error: `Erreur: ${error.message}` }
+    }
+
+    return { success: true, message: 'Ton mot de passe a bien été modifié ! Tu es maintenant connecté à ton compte.' }
+}

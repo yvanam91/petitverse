@@ -3,6 +3,9 @@
 import { createClient } from '@/utils/supabase/server'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { resend } from '@/lib/resend'
+import { WelcomeEmail } from '../../../emails/welcomeEmail'
+
 
 export type SignupState = {
     error?: string
@@ -118,6 +121,19 @@ export async function signup(prevState: SignupState, formData: FormData): Promis
 
     if (error) {
         return { error: error.message }
+    }
+
+    // Envoi de l'e-mail de bienvenue via Resend
+    try {
+        await resend.emails.send({
+            from: process.env.NEXT_PUBLIC_EMAIL_FROM || 'Picoverse <onboarding@resend.dev>',
+            to: email,
+            subject: "Bienvenue dans l'univers Picoverse 🚀",
+            react: WelcomeEmail({ firstName: username }),
+        });
+    } catch (emailError) {
+        // On log l'erreur mais on ne bloque pas l'inscription
+        console.error('Erreur lors de l\'envoi de l\'e-mail de bienvenue:', emailError);
     }
 
     return { success: true, message: 'Vérifiez vos emails pour confirmer votre inscription.' }
