@@ -227,6 +227,7 @@ export async function createProject(formData: FormData) {
     const defaultThemeConfig: PageConfig = {
         colors: {
             background: '#ffffff',
+            outerBackground: '#fff',
             primary: '#000000',
             secondary: '#e5e7eb',
             text: '#1f2937',
